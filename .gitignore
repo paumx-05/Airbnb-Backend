@@ -70,3 +70,81 @@ jspm_packages/
 # OS
 .DS_Store
 Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint
+.eslintcache
+
+# Prettier
+.prettierignore
+
+# Jest
+coverage/
+.nyc_output/
+
+# Storybook
+storybook-static/
+
+# Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
+firebase-debug.*.log
+
+# Vercel
+.vercel
+
+# Netlify
+.netlify
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.yaml
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Backup files
+*.bak
+*.backup
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Local development
+.local/
+local/
+
+# Testing
+test-results/
+playwright-report/
+test-results.xml

@@ -8,7 +8,7 @@
     "node_modules/**/*",
     "**/.git/**/*"
   ],
-  "exec": "ts-node src/app.ts",
+  "exec": "ts-node src/server.ts",
   "env": {
     "NODE_ENV": "development"
   },
