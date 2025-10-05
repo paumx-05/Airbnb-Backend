@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
-import { findUserByEmail, createUser, findUserById } from '../../models/auth/userMock';
-import { generateToken, hashPassword, comparePassword } from '../../utils/jwtMock';
-import { validateEmail, validatePassword, validateName, validateRequiredFields, sanitizeInput } from '../../utils/validation';
+import { findUserByEmail, createUser, findUserById, updateUserPassword, hashPassword, comparePassword, isPasswordValid } from '../../models/auth/user';
+import { generateToken, comparePassword as mockComparePassword } from '../../utils/jwtMock';
+import { validateEmail, validateName, validateRequiredFields, sanitizeInput } from '../../utils/validation';
+import { sendPasswordResetEmail } from '../../utils/emailMock';
+import { generateResetToken, verifyResetToken, invalidateResetToken } from '../../utils/resetTokenMock';
 import { AuthResponse } from '../../types/auth';
 
 // POST /api/auth/register
@@ -32,10 +34,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (!validatePassword(password)) {
+    if (!isPasswordValid(password)) {
       res.status(400).json({
         success: false,
-        error: { message: 'Password debe tener mínimo 6 caracteres' }
+        error: { message: 'La contraseña debe tener al menos 8 caracteres' }
       });
       return;
     }
@@ -49,7 +51,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Verificar si usuario ya existe
-    const existingUser = findUserByEmail(sanitizedEmail);
+    const existingUser = await findUserByEmail(sanitizedEmail);
     if (existingUser) {
       res.status(409).json({
         success: false,
@@ -58,14 +60,25 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Crear usuario
-    const hashedPassword = hashPassword(password);
-    const newUser = createUser({
+    // Crear usuario usando la función del modelo simplificada
+    const hashedPassword = await hashPassword(password);
+    
+    // Usar la función createUser pero con validación de contraseña ya hecha
+    const newUserResult = await createUser({
       email: sanitizedEmail,
       password: hashedPassword,
-      name: sanitizedName,
-      isActive: true
+      name: sanitizedName
     });
+
+    if (!newUserResult.success || !newUserResult.data) {
+      res.status(500).json({
+        success: false,
+        error: { message: newUserResult.error || 'Error creando usuario' }
+      });
+      return;
+    }
+
+    const newUser = newUserResult.data;
 
     // Generar token
     const token = generateToken(newUser.id, newUser.email);
@@ -86,6 +99,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json(response);
   } catch (error) {
     console.error('Error en register:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     res.status(500).json({
       success: false,
       error: { message: 'Error interno del servidor' }
@@ -121,7 +138,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Buscar usuario
-    const user = findUserByEmail(sanitizedEmail);
+    const user = await findUserByEmail(sanitizedEmail);
     if (!user) {
       res.status(401).json({
         success: false,
@@ -130,8 +147,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Verificar password
-    if (!comparePassword(password, user.password)) {
+    // Verificar password usando la función correcta
+    const isValidPassword = await comparePassword(password, user.password);
+    if (!isValidPassword) {
       res.status(401).json({
         success: false,
         error: { message: 'Credenciales inválidas' }
@@ -205,7 +223,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       res.status(404).json({
         success: false,
@@ -228,6 +246,127 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     });
   } catch (error) {
     console.error('Error en getProfile:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error interno del servidor' }
+    });
+  }
+};
+
+// POST /api/auth/forgot-password
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    
+    // Validar email
+    if (!validateEmail(email)) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Email inválido' }
+      });
+      return;
+    }
+    
+    // Buscar usuario (por seguridad, no revelamos si existe o no)
+    const user = await findUserByEmail(email);
+    
+    if (user && user.isActive) {
+      // Generar token de reset
+      const resetToken = generateResetToken(user.id, user.email);
+      
+      // Enviar email
+      const emailResult = await sendPasswordResetEmail(email, resetToken);
+      
+      if (!emailResult.success) {
+        res.status(500).json({
+          success: false,
+          error: { message: 'Error enviando email de recuperación' }
+        });
+        return;
+      }
+    }
+    
+    // Siempre devolver éxito por seguridad (no revelar si email existe)
+    res.json({
+      success: true,
+      data: {
+        message: 'Si el email está registrado, recibirás instrucciones para recuperar tu contraseña'
+      }
+    });
+  } catch (error) {
+    console.error('Error en forgotPassword:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error interno del servidor' }
+    });
+  }
+};
+
+// POST /api/auth/reset-password
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    // Validar datos
+    if (!token || !newPassword) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Token y nueva contraseña son requeridos' }
+      });
+      return;
+    }
+    
+    if (!isPasswordValid(newPassword)) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'La nueva contraseña debe tener al menos 8 caracteres' }
+      });
+      return;
+    }
+    
+    // Verificar token
+    const decoded = verifyResetToken(token);
+    if (!decoded) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Token inválido o expirado' }
+      });
+      return;
+    }
+    
+    // Buscar usuario
+    const user = await findUserById(decoded.userId);
+    if (!user || !user.isActive) {
+      res.status(404).json({
+        success: false,
+        error: { message: 'Usuario no encontrado' }
+      });
+      return;
+    }
+
+    // Actualizar contraseña
+    const hashedPassword = await hashPassword(newPassword);
+    const updateResult = await updateUserPassword(user.id, hashedPassword);
+    
+    if (!updateResult.success) {
+      res.status(500).json({
+        success: false,
+        error: { message: 'Error actualizando contraseña' }
+      });
+      return;
+    }
+    
+    // Invalidar token usado
+    invalidateResetToken(token);
+    
+    res.json({
+      success: true,
+      data: {
+        message: 'Contraseña restablecida exitosamente'
+      }
+    });
+  } catch (error) {
+    console.error('Error en resetPassword:', error);
     res.status(500).json({
       success: false,
       error: { message: 'Error interno del servidor' }
