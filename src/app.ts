@@ -15,6 +15,7 @@ import reviewRoutes from './routes/reviews/reviewRoutes';
 import hostRoutes from './routes/host/hostRoutes';
 import favoriteRoutes from './routes/favorites/favoriteRoutes';
 import paymentRoutes from './routes/payments/paymentRoutes';
+import cartRoutes from './routes/cart/cartRoutes';
 import errorHandler from './middleware/errorHandler';
 import logger from './utils/logger';
 import { generalRateLimit } from './middleware/rateLimiter';
@@ -143,6 +144,17 @@ app.get('/', (req, res) => {
           transactions: 'GET /api/payments/transactions',
           transaction: 'GET /api/payments/transactions/:id',
           refund: 'POST /api/payments/transactions/:id/refund'
+        },
+        cart: {
+          get: 'GET /api/cart',
+          add: 'POST /api/cart/add',
+          remove: 'DELETE /api/cart/remove/:itemId',
+          update: 'PUT /api/cart/update/:itemId',
+          clear: 'DELETE /api/cart/clear',
+          summary: 'GET /api/cart/summary',
+          item: 'GET /api/cart/item/:itemId',
+          checkAvailability: 'POST /api/cart/check-availability',
+          stats: 'GET /api/cart/stats'
         }
       },
       timestamp: new Date().toISOString()
@@ -182,6 +194,9 @@ app.use('/api/favorites', favoriteRoutes);
 
 // Rutas de pagos
 app.use('/api/payments', paymentRoutes);
+
+// Rutas de carrito
+app.use('/api/cart', cartRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

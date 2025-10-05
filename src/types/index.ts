@@ -38,3 +38,6 @@ export interface AppError extends Error {
   statusCode?: number;
   isOperational?: boolean;
 }
+
+// Re-exportar tipos del carrito
+export * from './cart';
