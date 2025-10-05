@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
 import { getRateLimitStats } from '../../middleware/rateLimiter';
-import { getCacheStats } from '../../utils/cache';
+import { cache } from '../../utils/cache';
 import logger from '../../utils/logger';
 import { authenticateToken, requireAdmin } from '../../middleware/auth/authMiddleware';
 
@@ -11,7 +11,7 @@ const router = Router();
 router.get('/', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const rateLimitStats = getRateLimitStats();
-    const cacheStats = getCacheStats();
+    const cacheStats = cache.getStats();
     const loggerMetrics = logger.getMetrics();
 
     res.json({

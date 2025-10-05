@@ -251,7 +251,8 @@ export const getPopularLocations = (): Array<{ city: string, country: string, pr
   });
 
   return Object.values(locationCounts)
-    .sort((a, b) => b.count - a.count)
+    .map(({ city, country, count }) => ({ city, country, propertyCount: count }))
+    .sort((a, b) => b.propertyCount - a.propertyCount)
     .slice(0, 10);
 };
 

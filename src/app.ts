@@ -10,6 +10,10 @@ import profileRoutes from './routes/profile/profileRoutes';
 import searchRoutes from './routes/search/searchRoutes';
 import propertyRoutes from './routes/properties/propertyRoutes';
 import statsRoutes from './routes/stats/statsRoutes';
+import reservationRoutes from './routes/reservations/reservationRoutes';
+import reviewRoutes from './routes/reviews/reviewRoutes';
+import hostRoutes from './routes/host/hostRoutes';
+import favoriteRoutes from './routes/favorites/favoriteRoutes';
 import errorHandler from './middleware/errorHandler';
 import logger from './utils/logger';
 import { generalRateLimit } from './middleware/rateLimiter';
@@ -87,6 +91,49 @@ app.get('/', (req, res) => {
           system: 'GET /api/stats',
           logs: 'GET /api/stats/logs',
           clearLogs: 'POST /api/stats/logs/clear'
+        },
+        reservations: {
+          create: 'POST /api/reservations',
+          myReservations: 'GET /api/reservations/my-reservations',
+          propertyReservations: 'GET /api/reservations/property/:id',
+          updateStatus: 'PATCH /api/reservations/:id/status',
+          checkAvailability: 'GET /api/reservations/check-availability',
+          calculatePrice: 'POST /api/reservations/calculate-price',
+          stats: 'GET /api/reservations/stats'
+        },
+        reviews: {
+          create: 'POST /api/reviews',
+          propertyReviews: 'GET /api/reviews/property/:id',
+          userReviews: 'GET /api/reviews/user/:id',
+          propertyStats: 'GET /api/reviews/property/:id/stats',
+          update: 'PUT /api/reviews/:id',
+          delete: 'DELETE /api/reviews/:id',
+          stats: 'GET /api/reviews/stats'
+        },
+        host: {
+          properties: 'GET /api/host/properties',
+          createProperty: 'POST /api/host/properties',
+          getProperty: 'GET /api/host/properties/:id',
+          updateProperty: 'PUT /api/host/properties/:id',
+          deleteProperty: 'DELETE /api/host/properties/:id',
+          propertyReservations: 'GET /api/host/properties/:id/reservations',
+          propertyReviews: 'GET /api/host/properties/:id/reviews',
+          stats: 'GET /api/host/stats'
+        },
+        favorites: {
+          add: 'POST /api/favorites',
+          remove: 'DELETE /api/favorites/:propertyId',
+          list: 'GET /api/favorites',
+          checkStatus: 'GET /api/favorites/:propertyId/status',
+          createWishlist: 'POST /api/favorites/wishlists',
+          getWishlists: 'GET /api/favorites/wishlists',
+          getPublicWishlists: 'GET /api/favorites/wishlists/public',
+          getWishlist: 'GET /api/favorites/wishlists/:id',
+          updateWishlist: 'PUT /api/favorites/wishlists/:id',
+          deleteWishlist: 'DELETE /api/favorites/wishlists/:id',
+          addToWishlist: 'POST /api/favorites/wishlists/:id/properties',
+          removeFromWishlist: 'DELETE /api/favorites/wishlists/:id/properties/:propertyId',
+          stats: 'GET /api/favorites/stats'
         }
       },
       timestamp: new Date().toISOString()
@@ -111,6 +158,18 @@ app.use('/api/properties', propertyRoutes);
 
 // Rutas de estadísticas
 app.use('/api/stats', statsRoutes);
+
+// Rutas de reservas
+app.use('/api/reservations', reservationRoutes);
+
+// Rutas de reviews
+app.use('/api/reviews', reviewRoutes);
+
+// Rutas de host
+app.use('/api/host', hostRoutes);
+
+// Rutas de favoritos
+app.use('/api/favorites', favoriteRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
