@@ -1,24 +1,18 @@
-/**
- * RUTAS DE ESTADÍSTICAS Y MONITOREO
- * Endpoints para métricas del sistema
- */
-
-import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../../middleware/auth/authMiddleware';
+import { Router } from 'express';
+import { Request, Response } from 'express';
+import { getRateLimitStats } from '../../middleware/rateLimiter';
+import { getCacheStats } from '../../utils/cache';
 import logger from '../../utils/logger';
-import { cache } from '../../utils/cache';
-import { getEmailLog } from '../../utils/emailMock';
-import { getActiveTokensCount } from '../../utils/resetTokenMock';
+import { authenticateToken, requireAdmin } from '../../middleware/auth/authMiddleware';
 
 const router = Router();
 
-// GET /api/stats
-router.get('/', authenticateToken, (req: Request, res: Response) => {
+// GET /api/stats - Estadísticas del sistema
+router.get('/', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
-    const logMetrics = logger.getMetrics();
-    const cacheStats = cache.getStats();
-    const emailLog = getEmailLog();
-    const activeTokens = getActiveTokensCount();
+    const rateLimitStats = getRateLimitStats();
+    const cacheStats = getCacheStats();
+    const loggerMetrics = logger.getMetrics();
 
     res.json({
       success: true,
@@ -27,22 +21,12 @@ router.get('/', authenticateToken, (req: Request, res: Response) => {
           uptime: process.uptime(),
           memory: process.memoryUsage(),
           nodeVersion: process.version,
-          environment: process.env.NODE_ENV || 'development'
+          platform: process.platform,
+          timestamp: new Date().toISOString()
         },
-        logs: logMetrics,
+        rateLimiting: rateLimitStats,
         cache: cacheStats,
-        email: {
-          totalSent: emailLog.length,
-          recentSent: emailLog.slice(-10).map(email => ({
-            to: email.to,
-            subject: email.subject,
-            sentAt: email.sentAt
-          }))
-        },
-        auth: {
-          activeResetTokens: activeTokens
-        },
-        timestamp: new Date().toISOString()
+        logging: loggerMetrics
       }
     });
   } catch (error) {
@@ -53,13 +37,12 @@ router.get('/', authenticateToken, (req: Request, res: Response) => {
   }
 });
 
-// GET /api/stats/logs
-router.get('/logs', authenticateToken, (req: Request, res: Response) => {
+// GET /api/stats/logs - Ver logs del sistema
+router.get('/logs', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const { level, limit = 50 } = req.query;
-    
-    const logs = logger.getLogs(level as any, parseInt(limit as string));
-    
+    const logs = logger.getLogs(level as any, Number(limit));
+
     res.json({
       success: true,
       data: {
@@ -76,11 +59,11 @@ router.get('/logs', authenticateToken, (req: Request, res: Response) => {
   }
 });
 
-// POST /api/stats/logs/clear
-router.post('/logs/clear', authenticateToken, (req: Request, res: Response) => {
+// POST /api/stats/logs/clear - Limpiar logs
+router.post('/logs/clear', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     logger.clearLogs();
-    
+
     res.json({
       success: true,
       data: {

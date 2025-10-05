@@ -1,126 +1,115 @@
 /**
- * MIDDLEWARE DE RATE LIMITING
+ * RATE LIMITING MIDDLEWARE
  * Limita el número de requests por IP para prevenir abuso
  */
 
-import { Request, Response, NextFunction } from 'express';
-import logger from '../utils/logger';
+interface RateLimitConfig {
+  windowMs: number;
+  maxRequests: number;
+  message: string;
+}
 
-interface RateLimitEntry {
+interface RequestRecord {
   count: number;
   resetTime: number;
-  blocked: boolean;
 }
 
-// Almacén de rate limits en memoria
-const rateLimitStore = new Map<string, RateLimitEntry>();
+// Almacén de requests por IP
+const requestStore = new Map<string, RequestRecord>();
 
-interface RateLimitConfig {
-  windowMs: number;    // Ventana de tiempo en ms
-  maxRequests: number; // Máximo número de requests
-  blockDuration?: number; // Duración del bloqueo en ms
-}
-
-const defaultConfig: RateLimitConfig = {
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  maxRequests: 100,          // 100 requests por ventana
-  blockDuration: 60 * 1000   // 1 minuto de bloqueo
+// Configuraciones por endpoint
+const rateLimitConfigs: Record<string, RateLimitConfig> = {
+  auth: {
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    maxRequests: 5, // 5 intentos por ventana
+    message: 'Demasiados intentos de autenticación. Intenta nuevamente en 15 minutos.'
+  },
+  general: {
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    maxRequests: 100, // 100 requests por ventana
+    message: 'Demasiadas peticiones. Intenta nuevamente en 15 minutos.'
+  },
+  strict: {
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    maxRequests: 20, // 20 requests por ventana
+    message: 'Demasiadas peticiones. Intenta nuevamente en 15 minutos.'
+  }
 };
 
-export const rateLimiter = (config: Partial<RateLimitConfig> = {}) => {
-  const finalConfig = { ...defaultConfig, ...config };
-
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+export const createRateLimiter = (configType: keyof typeof rateLimitConfigs = 'general') => {
+  const config = rateLimitConfigs[configType];
+  
+  return (req: any, res: any, next: any) => {
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     const now = Date.now();
-    const key = `${ip}:${req.path}`;
-
-    // Obtener o crear entrada para esta IP/ruta
-    let entry = rateLimitStore.get(key);
     
-    if (!entry || now > entry.resetTime) {
-      // Crear nueva entrada o resetear
-      entry = {
+    // Obtener registro del cliente
+    let record = requestStore.get(clientIP);
+    
+    // Si no existe registro o ha expirado, crear uno nuevo
+    if (!record || now > record.resetTime) {
+      record = {
         count: 0,
-        resetTime: now + finalConfig.windowMs,
-        blocked: false
+        resetTime: now + config.windowMs
       };
-      rateLimitStore.set(key, entry);
+      requestStore.set(clientIP, record);
     }
-
-    // Verificar si está bloqueado
-    if (entry.blocked && now < entry.resetTime) {
-      logger.warn(`Rate limit exceeded for IP: ${ip}`, {
-        path: req.path,
-        count: entry.count,
-        type: 'rate_limit_blocked'
-      });
-
-      res.status(429).json({
-        success: false,
-        error: {
-          message: 'Demasiadas peticiones. Intenta de nuevo más tarde.',
-          retryAfter: Math.ceil((entry.resetTime - now) / 1000)
-        }
-      });
-      return;
-    }
-
+    
     // Incrementar contador
-    entry.count++;
-
-    // Verificar límite
-    if (entry.count > finalConfig.maxRequests) {
-      entry.blocked = true;
-      entry.resetTime = now + (finalConfig.blockDuration || finalConfig.windowMs);
-
-      logger.warn(`Rate limit exceeded for IP: ${ip}`, {
-        path: req.path,
-        count: entry.count,
-        maxRequests: finalConfig.maxRequests,
-        type: 'rate_limit_exceeded'
-      });
-
+    record.count++;
+    
+    // Verificar si excede el límite
+    if (record.count > config.maxRequests) {
       res.status(429).json({
         success: false,
         error: {
-          message: 'Límite de peticiones excedido. Intenta de nuevo más tarde.',
-          retryAfter: Math.ceil((entry.resetTime - now) / 1000)
+          message: config.message,
+          retryAfter: Math.ceil((record.resetTime - now) / 1000)
         }
       });
       return;
     }
-
+    
     // Agregar headers informativos
     res.set({
-      'X-RateLimit-Limit': finalConfig.maxRequests.toString(),
-      'X-RateLimit-Remaining': Math.max(0, finalConfig.maxRequests - entry.count).toString(),
-      'X-RateLimit-Reset': new Date(entry.resetTime).toISOString()
+      'X-RateLimit-Limit': config.maxRequests.toString(),
+      'X-RateLimit-Remaining': Math.max(0, config.maxRequests - record.count).toString(),
+      'X-RateLimit-Reset': new Date(record.resetTime).toISOString()
     });
-
+    
     next();
   };
 };
 
-// Rate limiter específico para auth endpoints (más restrictivo)
-export const authRateLimiter = rateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  maxRequests: 50,          // Aumentado temporalmente para pruebas
-  blockDuration: 5 * 60 * 1000 // 5 minutos de bloqueo
-});
+// Rate limiters específicos
+export const authRateLimit = createRateLimiter('auth');
+export const generalRateLimit = createRateLimiter('general');
+export const strictRateLimit = createRateLimiter('strict');
 
-// Limpiar entradas expiradas periódicamente
+// Limpiar registros expirados cada 5 minutos
 setInterval(() => {
   const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key);
+  for (const [ip, record] of requestStore.entries()) {
+    if (now > record.resetTime) {
+      requestStore.delete(ip);
     }
   }
-}, 5 * 60 * 1000); // Cada 5 minutos
+}, 5 * 60 * 1000);
 
-// Función para limpiar rate limiter (útil para desarrollo)
-export const clearRateLimit = (): void => {
-  rateLimitStore.clear();
-  console.log('Rate limit store cleared');
+// Función para obtener estadísticas de rate limiting
+export const getRateLimitStats = () => {
+  const now = Date.now();
+  const activeIPs = Array.from(requestStore.entries())
+    .filter(([_, record]) => now <= record.resetTime)
+    .map(([ip, record]) => ({
+      ip,
+      requests: record.count,
+      resetTime: new Date(record.resetTime).toISOString()
+    }));
+  
+  return {
+    totalActiveIPs: activeIPs.length,
+    activeIPs: activeIPs.slice(0, 10), // Solo mostrar primeras 10
+    configs: rateLimitConfigs
+  };
 };

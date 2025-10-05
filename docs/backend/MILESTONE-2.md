@@ -581,18 +581,18 @@ export default app;
 
 ## ✅ **CRITERIOS DE ACEPTACIÓN**
 
-- [ ] Endpoint `/api/auth/register` funcionando con validaciones
-- [ ] Endpoint `/api/auth/login` funcionando con autenticación
-- [ ] Endpoint `/api/auth/logout` respondiendo correctamente
-- [ ] Endpoint `/api/auth/me` protegido con middleware
-- [ ] Sistema JWT mock implementado
-- [ ] Base de datos mock en memoria operativa
-- [ ] Middleware de autenticación funcionando
-- [ ] Validaciones de datos implementadas
-- [ ] Manejo de errores consistente
-- [ ] Sin dependencias de MongoDB
-- [ ] Programación funcional aplicada
-- [ ] Arquitectura MVC respetada
+- [x] Endpoint `/api/auth/register` funcionando con validaciones
+- [x] Endpoint `/api/auth/login` funcionando con autenticación
+- [x] Endpoint `/api/auth/logout` respondiendo correctamente
+- [x] Endpoint `/api/auth/me` protegido con middleware
+- [x] Sistema JWT mock implementado
+- [x] Base de datos mock en memoria operativa
+- [x] Middleware de autenticación funcionando
+- [x] Validaciones de datos implementadas
+- [x] Manejo de errores consistente
+- [x] Sin dependencias de MongoDB
+- [x] Programación funcional aplicada
+- [x] Arquitectura MVC respetada
 
 ---
 

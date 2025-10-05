@@ -281,16 +281,16 @@ NODE_ENV=development
 
 ## ✅ **CRITERIOS DE ACEPTACIÓN**
 
-- [ ] Servidor Express.js funcionando en puerto 5000
-- [ ] Conexión a MongoDB establecida
-- [ ] Endpoint `/api/health` respondiendo correctamente
-- [ ] Middleware de seguridad (CORS, Helmet) configurado
-- [ ] Sistema de logging implementado
-- [ ] Manejo de errores funcionando
-- [ ] TypeScript compilando sin errores
-- [ ] Estructura MVC básica establecida
-- [ ] Variables de entorno configuradas
-- [ ] Sin errores de consola
+- [x] Servidor Express.js funcionando en puerto 5000
+- [x] Conexión a MongoDB establecida
+- [x] Endpoint `/api/health` respondiendo correctamente
+- [x] Middleware de seguridad (CORS, Helmet) configurado
+- [x] Sistema de logging implementado
+- [x] Manejo de errores funcionando
+- [x] TypeScript compilando sin errores
+- [x] Estructura MVC básica establecida
+- [x] Variables de entorno configuradas
+- [x] Sin errores de consola
 
 ---
 

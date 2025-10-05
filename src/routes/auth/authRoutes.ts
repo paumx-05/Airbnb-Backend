@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { register, login, logout, getProfile, forgotPassword, resetPassword } from '../../controllers/auth/authController';
 import { authenticateToken, optionalAuth } from '../../middleware/auth/authMiddleware';
+import { authRateLimit } from '../../middleware/rateLimiter';
 
 const router = Router();
+
+// Aplicar rate limiting a todas las rutas de auth
+router.use(authRateLimit);
 
 // Rutas públicas
 router.post('/register', register);
