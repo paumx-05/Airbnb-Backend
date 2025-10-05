@@ -1,27 +1,21 @@
 import { Router } from 'express';
 import { 
-  createReservationController, 
-  getUserReservationsController, 
-  getPropertyReservationsController,
-  updateReservationStatusController,
-  checkAvailabilityController,
-  calculatePriceController,
-  getReservationStatsController
+  createReservationEndpoint,
+  getUserReservationsEndpoint,
+  updateReservationStatusEndpoint,
+  checkAvailabilityEndpoint
 } from '../../controllers/reservations/reservationController';
 import { authenticateToken } from '../../middleware/auth/authMiddleware';
 
 const router = Router();
 
-// Todas las rutas requieren autenticación
-router.use(authenticateToken);
+// Rutas públicas
+router.get('/check-availability', checkAvailabilityEndpoint);
 
-// Rutas de reservas
-router.post('/', createReservationController);
-router.get('/my-reservations', getUserReservationsController);
-router.get('/property/:id', getPropertyReservationsController);
-router.patch('/:id/status', updateReservationStatusController);
-router.get('/check-availability', checkAvailabilityController);
-router.post('/calculate-price', calculatePriceController);
-router.get('/stats', getReservationStatsController);
+// Rutas protegidas
+router.use(authenticateToken);
+router.post('/', createReservationEndpoint);
+router.get('/my-reservations', getUserReservationsEndpoint);
+router.patch('/:id/status', updateReservationStatusEndpoint);
 
 export default router;

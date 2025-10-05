@@ -14,6 +14,7 @@ import reservationRoutes from './routes/reservations/reservationRoutes';
 import reviewRoutes from './routes/reviews/reviewRoutes';
 import hostRoutes from './routes/host/hostRoutes';
 import favoriteRoutes from './routes/favorites/favoriteRoutes';
+import paymentRoutes from './routes/payments/paymentRoutes';
 import errorHandler from './middleware/errorHandler';
 import logger from './utils/logger';
 import { generalRateLimit } from './middleware/rateLimiter';
@@ -134,6 +135,14 @@ app.get('/', (req, res) => {
           addToWishlist: 'POST /api/favorites/wishlists/:id/properties',
           removeFromWishlist: 'DELETE /api/favorites/wishlists/:id/properties/:propertyId',
           stats: 'GET /api/favorites/stats'
+        },
+        payments: {
+          calculate: 'POST /api/payments/checkout/calculate',
+          process: 'POST /api/payments/checkout/process',
+          methods: 'GET /api/payments/methods',
+          transactions: 'GET /api/payments/transactions',
+          transaction: 'GET /api/payments/transactions/:id',
+          refund: 'POST /api/payments/transactions/:id/refund'
         }
       },
       timestamp: new Date().toISOString()
@@ -170,6 +179,9 @@ app.use('/api/host', hostRoutes);
 
 // Rutas de favoritos
 app.use('/api/favorites', favoriteRoutes);
+
+// Rutas de pagos
+app.use('/api/payments', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

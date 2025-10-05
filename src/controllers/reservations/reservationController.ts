@@ -3,17 +3,13 @@ import {
   createReservation, 
   getUserReservations, 
   getPropertyReservations,
-  getReservationById,
   updateReservationStatus,
-  checkAvailability,
-  calculateTotalPrice,
-  getAllReservations,
-  getReservationStats
+  checkAvailability
 } from '../../models/reservations/reservationMock';
-import { ReservationRequest, PriceCalculationRequest } from '../../types/reservations';
+import { createNotification } from '../../models/notifications/notificationMock';
 
-// POST /api/reservations - Crear nueva reserva
-export const createReservationController = async (req: Request, res: Response): Promise<void> => {
+// POST /api/reservations
+export const createReservationEndpoint = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
     const { propertyId, checkIn, checkOut, guests, specialRequests } = req.body;
@@ -26,47 +22,56 @@ export const createReservationController = async (req: Request, res: Response): 
       return;
     }
 
-    // Validaciones básicas
+    // Validaciones
     if (!propertyId || !checkIn || !checkOut || !guests) {
       res.status(400).json({
         success: false,
-        error: { message: 'propertyId, checkIn, checkOut y guests son requeridos' }
+        error: { message: 'Faltan datos requeridos' }
       });
       return;
     }
 
     // Verificar disponibilidad
-    if (!checkAvailability(propertyId, checkIn, checkOut)) {
-      res.status(409).json({
+    const isAvailable = checkAvailability(propertyId, checkIn, checkOut);
+    if (!isAvailable) {
+      res.status(400).json({
         success: false,
-        error: { message: 'Las fechas seleccionadas no están disponibles' }
+        error: { message: 'Propiedad no disponible para las fechas seleccionadas' }
       });
       return;
     }
-
-    // Calcular precio total
-    const priceCalculation = calculateTotalPrice(propertyId, checkIn, checkOut, guests);
 
     // Crear reserva
     const reservation = createReservation({
       propertyId,
       userId,
-      hostId: 'host1', // En un sistema real, obtener del property
+      hostId: 'host-1', // Mock host ID
       checkIn,
       checkOut,
       guests,
-      totalPrice: priceCalculation.totalPrice,
+      totalPrice: 1500 * Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)),
       status: 'pending',
       specialRequests,
       paymentStatus: 'pending'
     });
 
+    // Crear notificación
+    createNotification({
+      userId,
+      type: 'booking',
+      title: 'Reserva creada',
+      message: `Tu solicitud de reserva ha sido enviada. Espera la confirmación del host.`,
+      isRead: false,
+      priority: 'medium',
+      data: {
+        reservationId: reservation.id,
+        propertyId
+      }
+    });
+
     res.status(201).json({
       success: true,
-      data: {
-        reservation,
-        priceBreakdown: priceCalculation
-      }
+      data: { reservation }
     });
   } catch (error) {
     res.status(500).json({
@@ -76,8 +81,8 @@ export const createReservationController = async (req: Request, res: Response): 
   }
 };
 
-// GET /api/reservations/my-reservations - Obtener reservas del usuario
-export const getUserReservationsController = async (req: Request, res: Response): Promise<void> => {
+// GET /api/reservations/my-reservations
+export const getUserReservationsEndpoint = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
 
@@ -93,7 +98,7 @@ export const getUserReservationsController = async (req: Request, res: Response)
 
     res.json({
       success: true,
-      data: {
+      data: { 
         reservations,
         total: reservations.length
       }
@@ -101,44 +106,13 @@ export const getUserReservationsController = async (req: Request, res: Response)
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: { message: 'Error obteniendo reservas del usuario' }
+      error: { message: 'Error obteniendo reservas' }
     });
   }
 };
 
-// GET /api/reservations/property/:id - Obtener reservas de una propiedad
-export const getPropertyReservationsController = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const userId = (req as any).user?.userId;
-    const { id } = req.params;
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: { message: 'Usuario no autenticado' }
-      });
-      return;
-    }
-
-    const reservations = getPropertyReservations(id);
-
-    res.json({
-      success: true,
-      data: {
-        reservations,
-        total: reservations.length
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: { message: 'Error obteniendo reservas de la propiedad' }
-    });
-  }
-};
-
-// PATCH /api/reservations/:id/status - Actualizar estado de reserva
-export const updateReservationStatusController = async (req: Request, res: Response): Promise<void> => {
+// PATCH /api/reservations/:id/status
+export const updateReservationStatusEndpoint = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
     const { id } = req.params;
@@ -152,19 +126,10 @@ export const updateReservationStatusController = async (req: Request, res: Respo
       return;
     }
 
-    if (!status) {
+    if (!['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
       res.status(400).json({
         success: false,
-        error: { message: 'Status es requerido' }
-      });
-      return;
-    }
-
-    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
-    if (!validStatuses.includes(status)) {
-      res.status(400).json({
-        success: false,
-        error: { message: 'Status inválido' }
+        error: { message: 'Estado de reserva inválido' }
       });
       return;
     }
@@ -179,10 +144,26 @@ export const updateReservationStatusController = async (req: Request, res: Respo
       return;
     }
 
+    // Crear notificación de cambio de estado
+    createNotification({
+      userId,
+      type: 'booking',
+      title: `Reserva ${status}`,
+      message: `Tu reserva ha sido ${status}.`,
+      isRead: false,
+      priority: 'high',
+      data: {
+        reservationId: id,
+        status
+      }
+    });
+
     res.json({
       success: true,
-      data: {
-        message: 'Estado de reserva actualizado exitosamente'
+      data: { 
+        message: `Reserva ${status} exitosamente`,
+        reservationId: id,
+        status
       }
     });
   } catch (error) {
@@ -193,24 +174,28 @@ export const updateReservationStatusController = async (req: Request, res: Respo
   }
 };
 
-// GET /api/reservations/check-availability - Verificar disponibilidad
-export const checkAvailabilityController = async (req: Request, res: Response): Promise<void> => {
+// GET /api/reservations/check-availability
+export const checkAvailabilityEndpoint = async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyId, checkIn, checkOut } = req.query;
 
     if (!propertyId || !checkIn || !checkOut) {
       res.status(400).json({
         success: false,
-        error: { message: 'propertyId, checkIn y checkOut son requeridos' }
+        error: { message: 'Faltan parámetros requeridos' }
       });
       return;
     }
 
-    const isAvailable = checkAvailability(propertyId as string, checkIn as string, checkOut as string);
+    const isAvailable = checkAvailability(
+      propertyId as string,
+      checkIn as string,
+      checkOut as string
+    );
 
     res.json({
       success: true,
-      data: {
+      data: { 
         isAvailable,
         propertyId,
         checkIn,
@@ -221,61 +206,6 @@ export const checkAvailabilityController = async (req: Request, res: Response): 
     res.status(500).json({
       success: false,
       error: { message: 'Error verificando disponibilidad' }
-    });
-  }
-};
-
-// POST /api/reservations/calculate-price - Calcular precio de reserva
-export const calculatePriceController = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { propertyId, checkIn, checkOut, guests } = req.body;
-
-    if (!propertyId || !checkIn || !checkOut || !guests) {
-      res.status(400).json({
-        success: false,
-        error: { message: 'propertyId, checkIn, checkOut y guests son requeridos' }
-      });
-      return;
-    }
-
-    const priceCalculation = calculateTotalPrice(propertyId, checkIn, checkOut, guests);
-
-    res.json({
-      success: true,
-      data: priceCalculation
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: { message: 'Error calculando precio' }
-    });
-  }
-};
-
-// GET /api/reservations/stats - Estadísticas de reservas (admin)
-export const getReservationStatsController = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const userId = (req as any).user?.userId;
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        error: { message: 'Usuario no autenticado' }
-      });
-      return;
-    }
-
-    // En un sistema real, verificaríamos permisos de admin
-    const stats = getReservationStats();
-
-    res.json({
-      success: true,
-      data: stats
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: { message: 'Error obteniendo estadísticas de reservas' }
     });
   }
 };
