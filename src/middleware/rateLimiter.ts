@@ -21,7 +21,7 @@ const requestStore = new Map<string, RequestRecord>();
 const rateLimitConfigs: Record<string, RateLimitConfig> = {
   auth: {
     windowMs: 15 * 60 * 1000, // 15 minutos
-    maxRequests: 5, // 5 intentos por ventana
+    maxRequests: 50, // 50 intentos por ventana (aumentado para desarrollo)
     message: 'Demasiados intentos de autenticación. Intenta nuevamente en 15 minutos.'
   },
   general: {
@@ -112,4 +112,17 @@ export const getRateLimitStats = () => {
     activeIPs: activeIPs.slice(0, 10), // Solo mostrar primeras 10
     configs: rateLimitConfigs
   };
+};
+
+// Función para limpiar todos los rate limits (útil para desarrollo)
+export const clearAllRateLimits = () => {
+  requestStore.clear();
+  console.log('✅ Todos los rate limits han sido limpiados');
+};
+
+// Función para limpiar rate limit de una IP específica
+export const clearRateLimitForIP = (ip: string) => {
+  const deleted = requestStore.delete(ip);
+  console.log(deleted ? `✅ Rate limit limpiado para IP: ${ip}` : `❌ No se encontró rate limit para IP: ${ip}`);
+  return deleted;
 };

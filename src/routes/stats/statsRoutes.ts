@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { getRateLimitStats } from '../../middleware/rateLimiter';
+import { getRateLimitStats, clearAllRateLimits, clearRateLimitForIP } from '../../middleware/rateLimiter';
 import { cache } from '../../utils/cache';
 import logger from '../../utils/logger';
 import { authenticateToken, requireAdmin } from '../../middleware/auth/authMiddleware';
@@ -74,6 +74,46 @@ router.post('/logs/clear', authenticateToken, requireAdmin, async (req: Request,
     res.status(500).json({
       success: false,
       error: { message: 'Error limpiando logs' }
+    });
+  }
+});
+
+// POST /api/stats/rate-limits/clear - Limpiar todos los rate limits
+router.post('/rate-limits/clear', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    clearAllRateLimits();
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Todos los rate limits han sido limpiados exitosamente'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error limpiando rate limits' }
+    });
+  }
+});
+
+// POST /api/stats/rate-limits/clear/:ip - Limpiar rate limit de IP específica
+router.post('/rate-limits/clear/:ip', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ip } = req.params;
+    const cleared = clearRateLimitForIP(ip);
+
+    res.json({
+      success: true,
+      data: {
+        message: cleared ? `Rate limit limpiado para IP: ${ip}` : `No se encontró rate limit para IP: ${ip}`,
+        cleared
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error limpiando rate limit' }
     });
   }
 });
