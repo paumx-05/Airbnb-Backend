@@ -5,13 +5,16 @@
 
 import app from './app';
 import { config } from './config/environment';
+import connectDB from './config/database';
 import logger from './utils/logger';
 
 /**
  * Función para iniciar el servidor Express
  * Configura el puerto y muestra información de inicio
  */
-const startServer = (): void => {
+const startServer = async (): Promise<void> => {
+  await connectDB(); // Conectar DB antes de iniciar servidor
+  
   app.listen(config.port, () => {
     console.log('\n' + '='.repeat(60));
     console.log('🚀 AIRBNB BACKEND SERVER INICIADO');

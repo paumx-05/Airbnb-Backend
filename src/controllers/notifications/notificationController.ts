@@ -1,15 +1,7 @@
 import { Request, Response } from 'express';
-import { 
-  getUserNotifications, 
-  markNotificationAsRead, 
-  markAllAsRead, 
-  deleteNotification, 
-  clearAllNotifications, 
-  getUnreadCount,
-  createNotification,
-  updateNotificationSettings as updateNotificationSettingsModel,
-  getNotificationSettings as getNotificationSettingsModel
-} from '../../models/notifications/notificationMock';
+import { NotificationRepositoryFactory } from '../../models/factories/NotificationRepositoryFactory';
+
+const notificationRepo = NotificationRepositoryFactory.create();
 
 // GET /api/notifications
 export const getNotifications = async (req: Request, res: Response): Promise<void> => {
@@ -25,13 +17,18 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    let notifications = getUserNotifications(userId, Number(limit), type as string);
+    let notifications = await notificationRepo.getUserNotifications(userId);
     
     if (unreadOnly === 'true') {
       notifications = notifications.filter(n => !n.isRead);
     }
 
-    const unreadCount = getUnreadCount(userId);
+    if (type) {
+      notifications = notifications.filter(n => n.type === type);
+    }
+
+    notifications = notifications.slice(0, Number(limit));
+    const unreadCount = notifications.filter(n => !n.isRead).length;
 
     res.json({
       success: true,
@@ -63,7 +60,7 @@ export const markAsRead = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const success = markNotificationAsRead(id, userId);
+    const success = await notificationRepo.markAsRead(id);
     
     if (!success) {
       res.status(404).json({
@@ -98,7 +95,9 @@ export const markAllNotificationsAsRead = async (req: Request, res: Response): P
       return;
     }
 
-    const count = markAllAsRead(userId);
+    const success = await notificationRepo.markAllAsRead(userId);
+    const notifications = await notificationRepo.getUserNotifications(userId);
+    const count = notifications.filter(n => n.isRead).length;
 
     res.json({
       success: true,
@@ -129,7 +128,7 @@ export const removeNotification = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const success = deleteNotification(id, userId);
+    const success = await notificationRepo.deleteNotification(id);
     
     if (!success) {
       res.status(404).json({
@@ -164,7 +163,8 @@ export const clearAllUserNotifications = async (req: Request, res: Response): Pr
       return;
     }
 
-    const count = clearAllNotifications(userId);
+    const success = await notificationRepo.clearAllNotifications(userId);
+    const count = success ? 1 : 0;
 
     res.json({
       success: true,
@@ -185,7 +185,7 @@ export const clearAllUserNotifications = async (req: Request, res: Response): Pr
 export const createTestNotification = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
-    const { type = 'system', title = 'Notificación de prueba', message = 'Esta es una notificación de prueba' } = req.body;
+    const { type = 'info', title = 'Notificación de prueba', message = 'Esta es una notificación de prueba' } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -195,13 +195,12 @@ export const createTestNotification = async (req: Request, res: Response): Promi
       return;
     }
 
-    const notification = createNotification({
+    const notification = await notificationRepo.createNotification({
       userId,
-      type,
+      type: type as 'info' | 'success' | 'warning' | 'error',
       title,
       message,
-      isRead: false,
-      priority: 'medium'
+      isRead: false
     });
 
     res.status(201).json({
@@ -217,7 +216,7 @@ export const createTestNotification = async (req: Request, res: Response): Promi
 };
 
 // GET /api/notifications/settings
-export const getNotificationSettings = async (req: Request, res: Response): Promise<void> => {
+export const getUserNotificationSettings = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
 
@@ -229,7 +228,7 @@ export const getNotificationSettings = async (req: Request, res: Response): Prom
       return;
     }
 
-    const settings = getNotificationSettingsModel(userId);
+    const settings = await notificationRepo.getNotificationSettings(userId);
 
     res.json({
       success: true,
@@ -244,10 +243,10 @@ export const getNotificationSettings = async (req: Request, res: Response): Prom
 };
 
 // PUT /api/notifications/settings
-export const updateNotificationSettings = async (req: Request, res: Response): Promise<void> => {
+export const updateUserNotificationSettings = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
-    const { email, push, sound, marketing, propertyUpdates, searchAlerts, muteAll } = req.body;
+    const { emailNotifications, pushNotifications, smsNotifications, marketingEmails } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -257,14 +256,11 @@ export const updateNotificationSettings = async (req: Request, res: Response): P
       return;
     }
 
-    const settings = updateNotificationSettingsModel(userId, {
-      email: Boolean(email),
-      push: Boolean(push),
-      sound: Boolean(sound),
-      marketing: Boolean(marketing),
-      propertyUpdates: Boolean(propertyUpdates),
-      searchAlerts: Boolean(searchAlerts),
-      muteAll: Boolean(muteAll)
+    const settings = await notificationRepo.updateNotificationSettings(userId, {
+      emailNotifications: emailNotifications !== undefined ? Boolean(emailNotifications) : undefined,
+      pushNotifications: pushNotifications !== undefined ? Boolean(pushNotifications) : undefined,
+      smsNotifications: smsNotifications !== undefined ? Boolean(smsNotifications) : undefined,
+      marketingEmails: marketingEmails !== undefined ? Boolean(marketingEmails) : undefined
     });
 
     res.json({

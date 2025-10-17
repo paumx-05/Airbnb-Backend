@@ -9,7 +9,7 @@ import {
   getReviewStats,
   updateReview,
   deleteReview
-} from '../../models/reviews/reviewMock';
+} from '../../models';
 import { ReviewRequest } from '../../types/reviews';
 
 // POST /api/reviews - Crear nueva review
@@ -85,7 +85,11 @@ export const getPropertyReviewsController = async (req: Request, res: Response):
     const { id } = req.params;
     const { limit } = req.query;
 
-    const reviews = getPropertyReviews(id, limit ? Number(limit) : 10);
+    let reviews = await getPropertyReviews(id);
+    
+    if (limit) {
+      reviews = reviews.slice(0, Number(limit));
+    }
 
     res.json({
       success: true,
@@ -125,7 +129,7 @@ export const getUserReviewsController = async (req: Request, res: Response): Pro
       return;
     }
 
-    const reviews = getUserReviews(id);
+    const reviews = await getUserReviews(id);
 
     res.json({
       success: true,
@@ -203,7 +207,7 @@ export const updateReviewController = async (req: Request, res: Response): Promi
       return;
     }
 
-    const review = getReviewById(id);
+    const review = await getReviewById(id);
     if (!review) {
       res.status(404).json({
         success: false,
@@ -264,7 +268,7 @@ export const deleteReviewController = async (req: Request, res: Response): Promi
       return;
     }
 
-    const review = getReviewById(id);
+    const review = await getReviewById(id);
     if (!review) {
       res.status(404).json({
         success: false,
@@ -282,7 +286,7 @@ export const deleteReviewController = async (req: Request, res: Response): Promi
       return;
     }
 
-    const success = deleteReview(id);
+    const success = await deleteReview(id);
     
     if (!success) {
       res.status(500).json({

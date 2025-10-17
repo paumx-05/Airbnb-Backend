@@ -45,3 +45,17 @@ export interface AuthenticatedRequest extends Request {
     email: string;
   };
 }
+
+export interface CreateUserData {
+  email: string;
+  name: string;
+  password: string;
+  avatar?: string;
+}
+
+export interface UpdateUserData {
+  email?: string;
+  name?: string;
+  avatar?: string;
+  isActive?: boolean;
+}

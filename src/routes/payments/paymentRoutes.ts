@@ -2,10 +2,12 @@ import { Router } from 'express';
 import { 
   calculateCheckout,
   processCheckout,
-  getPaymentMethods,
-  getTransactions,
-  getTransaction,
-  refundTransaction
+  getPaymentMethodsController,
+  addPaymentMethodController,
+  deletePaymentMethodController,
+  getTransactionsController,
+  getTransactionController,
+  refundTransactionController
 } from '../../controllers/payments/paymentController';
 import { authenticateToken } from '../../middleware/auth/authMiddleware';
 
@@ -19,11 +21,13 @@ router.post('/checkout/calculate', calculateCheckout);
 router.post('/checkout/process', processCheckout);
 
 // Rutas de métodos de pago
-router.get('/methods', getPaymentMethods);
+router.get('/methods', getPaymentMethodsController);
+router.post('/methods', addPaymentMethodController);
+router.delete('/methods/:id', deletePaymentMethodController);
 
 // Rutas de transacciones
-router.get('/transactions', getTransactions);
-router.get('/transactions/:id', getTransaction);
-router.post('/transactions/:id/refund', refundTransaction);
+router.get('/transactions', getTransactionsController);
+router.get('/transactions/:id', getTransactionController);
+router.post('/transactions/:id/refund', refundTransactionController);
 
 export default router;

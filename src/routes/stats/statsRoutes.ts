@@ -97,6 +97,34 @@ router.post('/rate-limits/clear', authenticateToken, requireAdmin, async (req: R
   }
 });
 
+// POST /api/stats/rate-limits/clear-dev - Limpiar rate limits para desarrollo (sin autenticación)
+router.post('/rate-limits/clear-dev', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Solo permitir en desarrollo
+    if (process.env.NODE_ENV !== 'development') {
+      res.status(403).json({
+        success: false,
+        error: { message: 'Este endpoint solo está disponible en desarrollo' }
+      });
+      return;
+    }
+
+    clearAllRateLimits();
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Rate limits limpiados para desarrollo'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error limpiando rate limits' }
+    });
+  }
+});
+
 // POST /api/stats/rate-limits/clear/:ip - Limpiar rate limit de IP específica
 router.post('/rate-limits/clear/:ip', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {

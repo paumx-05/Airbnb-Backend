@@ -13,7 +13,7 @@ import {
   getCartSummary as getCartSummaryModel, 
   checkAvailability,
   getCartStats
-} from '../../models/cart/cartMock';
+} from '../../models';
 import { 
   validateAddToCartRequest, 
   validateUpdateCartItemRequest, 
@@ -83,7 +83,7 @@ export const addItemToCart = async (req: AuthenticatedRequest, res: Response): P
     }
     
     // Verificar disponibilidad
-    const isAvailable = checkAvailability(
+    const isAvailable = await checkAvailability(
       requestData.propertyId, 
       requestData.checkIn, 
       requestData.checkOut
@@ -99,7 +99,16 @@ export const addItemToCart = async (req: AuthenticatedRequest, res: Response): P
     }
     
     // Agregar al carrito
-    const newItem = addToCart(userId, requestData);
+    const newItem = await addToCart(userId, {
+      userId,
+      propertyId: requestData.propertyId,
+      checkIn: requestData.checkIn,
+      checkOut: requestData.checkOut,
+      guests: requestData.guests,
+      pricePerNight: requestData.pricePerNight || 0,
+      totalNights: Math.ceil((new Date(requestData.checkOut).getTime() - new Date(requestData.checkIn).getTime()) / (1000 * 60 * 60 * 24)),
+      totalPrice: 0 // Será calculado por el repositorio
+    });
     
     res.status(201).json({
       success: true,
@@ -271,7 +280,7 @@ export const clearUserCart = async (req: AuthenticatedRequest, res: Response): P
     }
     
     // Limpiar carrito
-    const cleared = clearCart(userId);
+    const cleared = await clearCart(userId);
     
     res.status(200).json({
       success: true,
@@ -338,7 +347,7 @@ export const checkPropertyAvailability = async (req: Request, res: Response): Pr
     }
     
     // Verificar disponibilidad
-    const isAvailable = checkAvailability(
+    const isAvailable = await checkAvailability(
       requestData.propertyId, 
       requestData.checkIn, 
       requestData.checkOut

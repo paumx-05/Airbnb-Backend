@@ -1,13 +1,35 @@
+/**
+ * 💳 MODELO MOCK DE PAGOS
+ * 
+ * 📝 RESUMEN DEL ARCHIVO:
+ * Base de datos mock para el sistema de procesamiento de pagos. Maneja métodos de pago,
+ * transacciones, cálculos de precios y validación de pagos. Incluye validación de tarjetas,
+ * desgloses de precios y procesamiento simulado de pagos con escenarios de éxito/fallo.
+ * 
+ * 🔧 IMPORTS Y DEPENDENCIAS:
+ * - PaymentMethod: Interfaz de métodos de pago guardados del usuario
+ * - Transaction: Registro de transacción de pago con seguimiento de estado
+ * - CheckoutData: Estructura completa de información de checkout
+ * - PricingBreakdown: Desglose detallado de cálculo de precios
+ */
+
 import { PaymentMethod, Transaction, CheckoutData, PricingBreakdown } from '../../types/payments';
 
-// Base de datos mock en memoria
+// 💾 BASE DE DATOS MOCK EN MEMORIA
+// Almacenamiento temporal para datos de pago (reemplazado por DB real en producción)
 const paymentDB = {
   paymentMethods: [] as PaymentMethod[],
   transactions: [] as Transaction[],
   nextId: 1
 };
 
-// Funciones CRUD para métodos de pago
+// 💳 GESTIÓN DE MÉTODOS DE PAGO
+
+/**
+ * ➕ Agrega un nuevo método de pago para el usuario
+ * @param paymentMethod - Datos del método de pago sin ID y timestamps
+ * @returns PaymentMethod con ID generado y timestamp de creación
+ */
 export const addPaymentMethod = (paymentMethod: Omit<PaymentMethod, 'id' | 'createdAt'>): PaymentMethod => {
   const newPaymentMethod: PaymentMethod = {
     ...paymentMethod,
@@ -15,7 +37,7 @@ export const addPaymentMethod = (paymentMethod: Omit<PaymentMethod, 'id' | 'crea
     createdAt: new Date().toISOString()
   };
   
-  // Si es el método por defecto, desmarcar otros
+  // If this is set as default, unset other default methods for this user
   if (newPaymentMethod.isDefault) {
     paymentDB.paymentMethods.forEach(method => {
       if (method.userId === newPaymentMethod.userId) {
@@ -29,6 +51,11 @@ export const addPaymentMethod = (paymentMethod: Omit<PaymentMethod, 'id' | 'crea
   return newPaymentMethod;
 };
 
+/**
+ * 📋 Obtiene todos los métodos de pago para un usuario específico
+ * @param userId - ID del usuario
+ * @returns Array de métodos de pago ordenados por defecto primero, luego por fecha de creación
+ */
 export const getUserPaymentMethods = (userId: string): PaymentMethod[] => {
   return paymentDB.paymentMethods
     .filter(pm => pm.userId === userId)
@@ -39,6 +66,11 @@ export const getUserPaymentMethods = (userId: string): PaymentMethod[] => {
     });
 };
 
+/**
+ * 💸 Crea un nuevo registro de transacción de pago
+ * @param transaction - Datos de transacción sin campos generados
+ * @returns Transaction con ID generado, ID de transacción y timestamps
+ */
 export const createTransaction = (transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt' | 'transactionId'>): Transaction => {
   const newTransaction: Transaction = {
     ...transaction,
@@ -53,6 +85,13 @@ export const createTransaction = (transaction: Omit<Transaction, 'id' | 'created
   return newTransaction;
 };
 
+/**
+ * 🔄 Actualiza estado de transacción y razón de fallo
+ * @param transactionId - Identificador único de transacción
+ * @param status - Nuevo estado de transacción
+ * @param failureReason - Razón opcional de fallo
+ * @returns true si la transacción fue actualizada, false si no se encontró
+ */
 export const updateTransactionStatus = (transactionId: string, status: Transaction['status'], failureReason?: string): boolean => {
   const transaction = paymentDB.transactions.find(t => t.transactionId === transactionId);
   if (transaction) {
@@ -66,6 +105,12 @@ export const updateTransactionStatus = (transactionId: string, status: Transacti
   return false;
 };
 
+/**
+ * 📊 Obtiene historial de transacciones del usuario
+ * @param userId - ID del usuario
+ * @param limit - Número máximo de transacciones a retornar (por defecto 20)
+ * @returns Array de transacciones ordenadas por fecha de creación (más recientes primero)
+ */
 export const getUserTransactions = (userId: string, limit: number = 20): Transaction[] => {
   return paymentDB.transactions
     .filter(t => t.userId === userId)
@@ -73,55 +118,50 @@ export const getUserTransactions = (userId: string, limit: number = 20): Transac
     .slice(0, limit);
 };
 
+/**
+ * 🔍 Obtiene una transacción específica por ID
+ * @param transactionId - Identificador único de transacción
+ * @returns Transaction si se encontró, null en caso contrario
+ */
 export const getTransactionById = (transactionId: string): Transaction | null => {
   return paymentDB.transactions.find(t => t.transactionId === transactionId) || null;
 };
 
-// Funciones de validación y cálculo
-export const validatePaymentData = (paymentInfo: CheckoutData['paymentInfo']): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-  
-  // Validar número de tarjeta (Luhn algorithm simplificado)
+// 🔐 FUNCIONES DE VALIDACIÓN Y CÁLCULO
+
+/**
+ * ✅ Valida información básica de tarjeta de pago
+ * @param paymentInfo - Detalles de tarjeta a validar
+ * @returns true si es válida, false si no
+ */
+export const validatePaymentData = (paymentInfo: CheckoutData['paymentInfo']): boolean => {
   const cardNumber = paymentInfo.cardNumber.replace(/\s/g, '');
-  if (!/^\d{13,19}$/.test(cardNumber)) {
-    errors.push('Número de tarjeta inválido');
-  }
-  
-  // Validar fecha de expiración
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
-  if (paymentInfo.expiryYear < currentYear || 
-      (paymentInfo.expiryYear === currentYear && paymentInfo.expiryMonth < currentMonth)) {
-    errors.push('Tarjeta expirada');
-  }
-  
-  // Validar CVV
-  if (!/^\d{3,4}$/.test(paymentInfo.cvv)) {
-    errors.push('CVV inválido');
-  }
-  
-  // Validar nombre del titular
-  if (!paymentInfo.cardholderName || paymentInfo.cardholderName.trim().length < 2) {
-    errors.push('Nombre del titular requerido');
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
+  return (
+    /^\d{13,19}$/.test(cardNumber) &&
+    !(paymentInfo.expiryYear < currentYear || 
+      (paymentInfo.expiryYear === currentYear && paymentInfo.expiryMonth < currentMonth)) &&
+    /^\d{3,4}$/.test(paymentInfo.cvv) &&
+    Boolean(paymentInfo.cardholderName && paymentInfo.cardholderName.trim().length >= 2)
+  );
 };
 
-export const calculatePricing = (propertyId: string, checkIn: string, checkOut: string, guests: number): PricingBreakdown => {
-  // Simular precio base por propiedad
-  const basePrice = 1500; // MXN por noche
+/**
+ * 💰 Calcula precios básicos para una reserva
+ * @param checkIn - Fecha de check-in
+ * @param checkOut - Fecha de check-out
+ * @returns Desglose básico de precios
+ */
+export const calculatePricing = (checkIn: string, checkOut: string): PricingBreakdown => {
+  const basePrice = 1500; // MXN per night
   const nights = Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24));
   
   const subtotal = basePrice * nights;
   const cleaningFee = 200;
   const serviceFee = Math.round(subtotal * 0.1);
   const taxes = Math.round(subtotal * 0.08);
-  const total = subtotal + cleaningFee + serviceFee + taxes;
   
   return {
     basePrice,
@@ -130,16 +170,21 @@ export const calculatePricing = (propertyId: string, checkIn: string, checkOut: 
     cleaningFee,
     serviceFee,
     taxes,
-    total,
+    total: subtotal + cleaningFee + serviceFee + taxes,
     currency: 'MXN'
   };
 };
 
+/**
+ * 🔄 Simula procesamiento de pago con retrasos realistas
+ * @param transaction - Transacción a procesar
+ * @returns Promise con resultado de procesamiento y mensaje de estado
+ */
 export const processPayment = async (transaction: Transaction): Promise<{ success: boolean; message: string }> => {
-  // Simular procesamiento de pago
+  // Simulate payment processing delay (2 seconds)
   await new Promise(resolve => setTimeout(resolve, 2000));
   
-  // Simular éxito (90% de éxito, 10% de fallo)
+  // Simulate realistic success rate (90% success, 10% failure)
   const isSuccess = Math.random() > 0.1;
   
   if (isSuccess) {
@@ -157,7 +202,11 @@ export const processPayment = async (transaction: Transaction): Promise<{ succes
   }
 };
 
-// Función auxiliar para determinar la marca de tarjeta
+/**
+ * 🏷️ Determina marca de tarjeta basada en el número de tarjeta
+ * @param cardNumber - String del número de tarjeta
+ * @returns Tipo de marca de tarjeta basado en el primer dígito
+ */
 export const getCardBrand = (cardNumber: string): 'visa' | 'mastercard' | 'amex' | 'discover' => {
   const number = cardNumber.replace(/\s/g, '');
   
@@ -166,5 +215,5 @@ export const getCardBrand = (cardNumber: string): 'visa' | 'mastercard' | 'amex'
   if (number.startsWith('3')) return 'amex';
   if (number.startsWith('6')) return 'discover';
   
-  return 'visa'; // Default
+  return 'visa'; // Default fallback
 };

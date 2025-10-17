@@ -16,7 +16,7 @@ import {
   removePasswordFromUser,
   CreateUserData,
   UpdateUserData
-} from '../../models/auth/user';
+} from '../../models';
 
 // =============================================================================
 // INTERFACES Y TIPOS
@@ -161,18 +161,10 @@ export const createNewUser = async (req: Request, res: Response): Promise<void> 
     };
     
     // Crear usuario usando el modelo
-    const result = await createUser(userData);
-    
-    if (!result.success) {
-      res.status(400).json({
-        success: false,
-        error: result.error
-      });
-      return;
-    }
+    const user = await createUser(userData);
     
     // Remover contraseña de la respuesta
-    const safeUser = removePasswordFromUser(result.data!);
+    const safeUser = removePasswordFromUser(user);
     
     const response: UserResponse = {
       success: true,
@@ -183,9 +175,10 @@ export const createNewUser = async (req: Request, res: Response): Promise<void> 
     res.status(201).json(response);
   } catch (error) {
     console.error('Error en createNewUser:', error);
-    res.status(500).json({
+    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
+    res.status(error instanceof Error && error.message.includes('email') ? 400 : 500).json({
       success: false,
-      error: 'Error interno del servidor'
+      error: errorMessage
     });
   }
 };
@@ -225,18 +218,10 @@ export const updateUserById = async (req: Request, res: Response): Promise<void>
     if (isActive !== undefined) updateData.isActive = isActive;
     
     // Actualizar usuario
-    const result = await updateUser(id, updateData);
-    
-    if (!result.success) {
-      res.status(400).json({
-        success: false,
-        error: result.error
-      });
-      return;
-    }
+    const user = await updateUser(id, updateData);
     
     // Remover contraseña de la respuesta
-    const safeUser = removePasswordFromUser(result.data!);
+    const safeUser = removePasswordFromUser(user);
     
     const response: UserResponse = {
       success: true,
@@ -247,9 +232,10 @@ export const updateUserById = async (req: Request, res: Response): Promise<void>
     res.json(response);
   } catch (error) {
     console.error('Error en updateUserById:', error);
-    res.status(500).json({
+    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
+    res.status(error instanceof Error && error.message.includes('encontrado') ? 404 : 500).json({
       success: false,
-      error: 'Error interno del servidor'
+      error: errorMessage
     });
   }
 };
@@ -289,18 +275,10 @@ export const patchUserById = async (req: Request, res: Response): Promise<void> 
     if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
     
     // Actualizar usuario
-    const result = await updateUser(id, updateData);
-    
-    if (!result.success) {
-      res.status(400).json({
-        success: false,
-        error: result.error
-      });
-      return;
-    }
+    const user = await updateUser(id, updateData);
     
     // Remover contraseña de la respuesta
-    const safeUser = removePasswordFromUser(result.data!);
+    const safeUser = removePasswordFromUser(user);
     
     const response: UserResponse = {
       success: true,
@@ -311,9 +289,10 @@ export const patchUserById = async (req: Request, res: Response): Promise<void> 
     res.json(response);
   } catch (error) {
     console.error('Error en patchUserById:', error);
-    res.status(500).json({
+    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
+    res.status(error instanceof Error && error.message.includes('encontrado') ? 404 : 500).json({
       success: false,
-      error: 'Error interno del servidor'
+      error: errorMessage
     });
   }
 };
@@ -345,15 +324,7 @@ export const deleteUserById = async (req: Request, res: Response): Promise<void>
     }
     
     // Eliminar usuario (soft delete)
-    const result = await deleteUser(id);
-    
-    if (!result.success) {
-      res.status(400).json({
-        success: false,
-        error: result.error
-      });
-      return;
-    }
+    await deleteUser(id);
     
     const response: UserResponse = {
       success: true,
@@ -363,9 +334,10 @@ export const deleteUserById = async (req: Request, res: Response): Promise<void>
     res.json(response);
   } catch (error) {
     console.error('Error en deleteUserById:', error);
-    res.status(500).json({
+    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
+    res.status(error instanceof Error && error.message.includes('encontrado') ? 404 : 500).json({
       success: false,
-      error: 'Error interno del servidor'
+      error: errorMessage
     });
   }
 };

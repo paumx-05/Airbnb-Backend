@@ -3,7 +3,7 @@ import {
   addToFavoritesController, 
   removeFromFavoritesController, 
   getUserFavoritesController,
-  checkFavoriteStatusController,
+  checkFavoriteController,
   createWishlistController,
   getUserWishlistsController,
   getPublicWishlistsController,
@@ -12,7 +12,7 @@ import {
   deleteWishlistController,
   addPropertyToWishlistController,
   removePropertyFromWishlistController,
-  getFavoritesStatsController
+  getFavoriteStatsController
 } from '../../controllers/favorites/favoriteController';
 import { authenticateToken } from '../../middleware/auth/authMiddleware';
 
@@ -28,7 +28,7 @@ router.use(authenticateToken);
 router.post('/', addToFavoritesController);
 router.delete('/:propertyId', removeFromFavoritesController);
 router.get('/', getUserFavoritesController);
-router.get('/:propertyId/status', checkFavoriteStatusController);
+router.get('/check/:propertyId', checkFavoriteController);
 
 // Rutas de wishlists
 router.post('/wishlists', createWishlistController);
@@ -42,6 +42,6 @@ router.post('/wishlists/:id/properties', addPropertyToWishlistController);
 router.delete('/wishlists/:id/properties/:propertyId', removePropertyFromWishlistController);
 
 // Estadísticas
-router.get('/stats', getFavoritesStatsController);
+router.get('/stats', getFavoriteStatsController);
 
 export default router;

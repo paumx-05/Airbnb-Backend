@@ -1,19 +1,12 @@
 import { Request, Response } from 'express';
-import { 
-  addPaymentMethod, 
-  getUserPaymentMethods, 
-  createTransaction, 
-  getUserTransactions,
-  getTransactionById,
-  validatePaymentData,
-  calculatePricing,
-  processPayment,
-  updateTransactionStatus,
-  getCardBrand
-} from '../../models/payments/paymentMock';
-import { createReservation } from '../../models/reservations/reservationMock';
-import { createNotification } from '../../models/notifications/notificationMock';
+import { PaymentRepositoryFactory } from '../../models/factories/PaymentRepositoryFactory';
+import { ReservationRepositoryFactory } from '../../models/factories/ReservationRepositoryFactory';
+import { NotificationRepositoryFactory } from '../../models/factories/NotificationRepositoryFactory';
 import { CheckoutData } from '../../types/payments';
+
+const paymentRepo = PaymentRepositoryFactory.create();
+const reservationRepo = ReservationRepositoryFactory.create();
+const notificationRepo = NotificationRepositoryFactory.create();
 
 // POST /api/payments/checkout/calculate
 export const calculateCheckout = async (req: Request, res: Response): Promise<void> => {
@@ -29,7 +22,7 @@ export const calculateCheckout = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const pricing = calculatePricing(propertyId, checkIn, checkOut, guests);
+    const pricing = await paymentRepo.calculatePricing(propertyId, checkIn, checkOut, guests);
 
     res.json({
       success: true,
@@ -70,20 +63,19 @@ export const processCheckout = async (req: Request, res: Response): Promise<void
     }
 
     // Validar datos de pago
-    const paymentValidation = validatePaymentData(checkoutData.paymentInfo);
-    if (!paymentValidation.isValid) {
+    const isValid = await paymentRepo.validatePaymentData(checkoutData.paymentInfo);
+    if (!isValid) {
       res.status(400).json({
         success: false,
         error: { 
-          message: 'Datos de pago inválidos',
-          details: paymentValidation.errors
+          message: 'Datos de pago inválidos'
         }
       });
       return;
     }
 
     // Calcular pricing
-    const pricing = calculatePricing(
+    const pricing = await paymentRepo.calculatePricing(
       checkoutData.propertyId,
       checkoutData.checkIn,
       checkoutData.checkOut,
@@ -91,81 +83,79 @@ export const processCheckout = async (req: Request, res: Response): Promise<void
     );
 
     // Crear método de pago
-    const paymentMethod = addPaymentMethod({
+    const paymentMethod = await paymentRepo.addPaymentMethod(userId, {
       userId,
       type: 'credit_card',
       cardNumber: `****${checkoutData.paymentInfo.cardNumber.slice(-4)}`,
-      cardBrand: getCardBrand(checkoutData.paymentInfo.cardNumber),
+      cardBrand: paymentRepo.getCardBrand(checkoutData.paymentInfo.cardNumber) as any,
       expiryMonth: checkoutData.paymentInfo.expiryMonth,
       expiryYear: checkoutData.paymentInfo.expiryYear,
       cardholderName: checkoutData.paymentInfo.cardholderName,
-      isDefault: true
+      isDefault: false
     });
 
     // Crear transacción
-    const transaction = createTransaction({
+    const transaction = await paymentRepo.createTransaction({
       userId,
-      reservationId: '', // Se asignará después
       propertyId: checkoutData.propertyId,
+      reservationId: 'pending',
       amount: pricing.total,
       currency: pricing.currency,
-      status: 'pending',
-      paymentMethod,
-      description: `Reserva para propiedad ${checkoutData.propertyId}`
+      status: 'processing',
+      paymentMethod: paymentMethod,
+      transactionId: `txn_${Date.now()}`,
+      description: `Reserva de propiedad ${checkoutData.propertyId}`
     });
 
-    // Procesar pago
-    const paymentResult = await processPayment(transaction);
+    // Procesar pago simulado
+    const paymentResult = await paymentRepo.processPayment(checkoutData);
 
-    if (paymentResult.success) {
+    if (paymentResult) {
       // Crear reserva
-      const reservation = createReservation({
-        propertyId: checkoutData.propertyId,
+      const reservation = await reservationRepo.createReservation({
         userId,
-        hostId: 'host-1', // Mock host ID
+        propertyId: checkoutData.propertyId,
+        hostId: 'host-1',
         checkIn: checkoutData.checkIn,
         checkOut: checkoutData.checkOut,
         guests: checkoutData.guests,
         totalPrice: pricing.total,
         status: 'confirmed',
-        specialRequests: checkoutData.guestInfo.specialRequests,
         paymentStatus: 'paid'
       });
 
       // Actualizar transacción con ID de reserva
-      transaction.reservationId = reservation.id;
-      updateTransactionStatus(transaction.transactionId, 'completed');
+      await paymentRepo.updateTransactionStatus(transaction.id, 'completed');
 
-      // Crear notificación de confirmación
-      createNotification({
+      // Crear notificación
+      await notificationRepo.createNotification({
         userId,
-        type: 'booking',
-        title: 'Reserva confirmada',
-        message: `Tu reserva para ${checkoutData.checkIn} ha sido confirmada exitosamente.`,
+        type: 'success',
+        title: 'Pago exitoso',
+        message: 'Tu pago ha sido procesado exitosamente. Tu reserva está confirmada.',
         isRead: false,
-        priority: 'high',
         data: {
           reservationId: reservation.id,
           transactionId: transaction.transactionId
         }
       });
 
-      res.json({
+      res.status(201).json({
         success: true,
         data: {
           reservation,
           transaction,
-          paymentMethod,
-          message: 'Reserva procesada exitosamente'
+          message: 'Checkout completado exitosamente'
         }
       });
     } else {
-      updateTransactionStatus(transaction.transactionId, 'failed', paymentResult.message);
-      
+      // Fallo en el pago
+      await paymentRepo.updateTransactionStatus(transaction.id, 'failed');
+
       res.status(400).json({
         success: false,
-        error: { 
-          message: paymentResult.message,
+        error: {
+          message: 'Error al procesar el pago',
           transactionId: transaction.transactionId
         }
       });
@@ -173,13 +163,62 @@ export const processCheckout = async (req: Request, res: Response): Promise<void
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: { message: 'Error procesando el checkout' }
+      error: { message: 'Error procesando checkout' }
+    });
+  }
+};
+
+// POST /api/payments/methods
+export const addPaymentMethodController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { cardNumber, expiryMonth, expiryYear, cvv, cardholderName, isDefault } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: { message: 'Usuario no autenticado' }
+      });
+      return;
+    }
+
+    // Validaciones básicas
+    if (!cardNumber || !expiryMonth || !expiryYear || !cvv || !cardholderName) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Faltan datos requeridos del método de pago' }
+      });
+      return;
+    }
+
+    const paymentMethod = await paymentRepo.addPaymentMethod(userId, {
+      userId,
+      type: 'credit_card',
+      cardNumber: `****${cardNumber.slice(-4)}`,
+      cardBrand: paymentRepo.getCardBrand(cardNumber) as any,
+      expiryMonth,
+      expiryYear,
+      cardholderName,
+      isDefault: isDefault || false
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        paymentMethod,
+        message: 'Método de pago agregado exitosamente'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error agregando método de pago' }
     });
   }
 };
 
 // GET /api/payments/methods
-export const getPaymentMethods = async (req: Request, res: Response): Promise<void> => {
+export const getPaymentMethodsController = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
 
@@ -191,11 +230,14 @@ export const getPaymentMethods = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const paymentMethods = getUserPaymentMethods(userId);
+    const paymentMethods = await paymentRepo.getUserPaymentMethods(userId);
 
     res.json({
       success: true,
-      data: { paymentMethods }
+      data: {
+        paymentMethods,
+        total: paymentMethods.length
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -206,10 +248,10 @@ export const getPaymentMethods = async (req: Request, res: Response): Promise<vo
 };
 
 // GET /api/payments/transactions
-export const getTransactions = async (req: Request, res: Response): Promise<void> => {
+export const getTransactionsController = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
-    const { limit = 20 } = req.query;
+    const { limit } = req.query;
 
     if (!userId) {
       res.status(401).json({
@@ -219,11 +261,15 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const transactions = getUserTransactions(userId, Number(limit));
+    let transactions = await paymentRepo.getUserTransactions(userId);
+    
+    if (limit) {
+      transactions = transactions.slice(0, Number(limit));
+    }
 
     res.json({
       success: true,
-      data: { 
+      data: {
         transactions,
         total: transactions.length
       }
@@ -237,7 +283,7 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
 };
 
 // GET /api/payments/transactions/:id
-export const getTransaction = async (req: Request, res: Response): Promise<void> => {
+export const getTransactionController = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
     const { id } = req.params;
@@ -250,8 +296,8 @@ export const getTransaction = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const transaction = getTransactionById(id);
-    
+    const transaction = await paymentRepo.getTransactionById(id);
+
     if (!transaction || transaction.userId !== userId) {
       res.status(404).json({
         success: false,
@@ -272,8 +318,8 @@ export const getTransaction = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// POST /api/payments/transactions/:id/refund
-export const refundTransaction = async (req: Request, res: Response): Promise<void> => {
+// POST /api/payments/refund/:id
+export const refundTransactionController = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
     const { id } = req.params;
@@ -286,8 +332,8 @@ export const refundTransaction = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const transaction = getTransactionById(id);
-    
+    const transaction = await paymentRepo.getTransactionById(id);
+
     if (!transaction || transaction.userId !== userId) {
       res.status(404).json({
         success: false,
@@ -304,19 +350,16 @@ export const refundTransaction = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Simular procesamiento de reembolso
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    updateTransactionStatus(transaction.transactionId, 'refunded');
+    // Procesar reembolso
+    await paymentRepo.updateTransactionStatus(transaction.id, 'refunded');
 
-    // Crear notificación de reembolso
-    createNotification({
+    // Crear notificación
+    await notificationRepo.createNotification({
       userId,
-      type: 'system',
+      type: 'info',
       title: 'Reembolso procesado',
       message: `Tu reembolso de $${transaction.amount} ${transaction.currency} ha sido procesado.`,
       isRead: false,
-      priority: 'medium',
       data: {
         transactionId: transaction.transactionId,
         amount: transaction.amount
@@ -327,16 +370,51 @@ export const refundTransaction = async (req: Request, res: Response): Promise<vo
       success: true,
       data: {
         message: 'Reembolso procesado exitosamente',
-        transaction: {
-          ...transaction,
-          status: 'refunded'
-        }
+        transactionId: transaction.transactionId
       }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       error: { message: 'Error procesando reembolso' }
+    });
+  }
+};
+
+// DELETE /api/payments/methods/:id
+export const deletePaymentMethodController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.userId;
+    const { id } = req.params;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: { message: 'Usuario no autenticado' }
+      });
+      return;
+    }
+
+    const success = await paymentRepo.deletePaymentMethod(userId, id);
+
+    if (!success) {
+      res.status(404).json({
+        success: false,
+        error: { message: 'Método de pago no encontrado' }
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Método de pago eliminado exitosamente'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error eliminando método de pago' }
     });
   }
 };

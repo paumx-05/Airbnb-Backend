@@ -21,17 +21,17 @@ const requestStore = new Map<string, RequestRecord>();
 const rateLimitConfigs: Record<string, RateLimitConfig> = {
   auth: {
     windowMs: 15 * 60 * 1000, // 15 minutos
-    maxRequests: 50, // 50 intentos por ventana (aumentado para desarrollo)
+    maxRequests: process.env.NODE_ENV === 'development' ? 1000 : 50, // Mucho más permisivo en desarrollo
     message: 'Demasiados intentos de autenticación. Intenta nuevamente en 15 minutos.'
   },
   general: {
     windowMs: 15 * 60 * 1000, // 15 minutos
-    maxRequests: 100, // 100 requests por ventana
+    maxRequests: process.env.NODE_ENV === 'development' ? 2000 : 100, // Mucho más permisivo en desarrollo
     message: 'Demasiadas peticiones. Intenta nuevamente en 15 minutos.'
   },
   strict: {
     windowMs: 15 * 60 * 1000, // 15 minutos
-    maxRequests: 20, // 20 requests por ventana
+    maxRequests: process.env.NODE_ENV === 'development' ? 500 : 20, // Más permisivo en desarrollo
     message: 'Demasiadas peticiones. Intenta nuevamente en 15 minutos.'
   }
 };
@@ -40,6 +40,11 @@ export const createRateLimiter = (configType: keyof typeof rateLimitConfigs = 'g
   const config = rateLimitConfigs[configType];
   
   return (req: any, res: any, next: any) => {
+    // En desarrollo, permitir deshabilitar rate limiting con variable de entorno
+    if (process.env.NODE_ENV === 'development' && process.env.DISABLE_RATE_LIMITING === 'true') {
+      return next();
+    }
+    
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     const now = Date.now();
     

@@ -1,15 +1,13 @@
 import { Request, Response } from 'express';
-import { 
-  createHostProperty, 
-  getHostProperties, 
-  getHostPropertyById,
-  updateHostProperty,
-  deleteHostProperty,
-  getHostStats,
-  getHostPropertyReservations,
-  getHostPropertyReviews
-} from '../../models/host/hostMock';
-import { HostPropertyUpdate } from '../../types/host';
+import { HostRepositoryFactory } from '../../models/factories/HostRepositoryFactory';
+import { PropertyRepositoryFactory } from '../../models/factories/PropertyRepositoryFactory';
+import { ReservationRepositoryFactory } from '../../models/factories/ReservationRepositoryFactory';
+import { ReviewRepositoryFactory } from '../../models/factories/ReviewRepositoryFactory';
+
+const hostRepo = HostRepositoryFactory.create();
+const propertyRepo = PropertyRepositoryFactory.create();
+const reservationRepo = ReservationRepositoryFactory.create();
+const reviewRepo = ReviewRepositoryFactory.create();
 
 // GET /api/host/properties - Obtener propiedades del host
 export const getHostPropertiesController = async (req: Request, res: Response): Promise<void> => {
@@ -24,7 +22,7 @@ export const getHostPropertiesController = async (req: Request, res: Response): 
       return;
     }
 
-    const properties = getHostProperties(userId);
+    const properties = await hostRepo.getHostProperties(userId);
 
     res.json({
       success: true,
@@ -65,7 +63,7 @@ export const createHostPropertyController = async (req: Request, res: Response):
     }
 
     // Crear propiedad
-    const property = createHostProperty({
+    const property = await hostRepo.createHostProperty({
       hostId: userId,
       title,
       description,
@@ -104,9 +102,9 @@ export const getHostPropertyController = async (req: Request, res: Response): Pr
       return;
     }
 
-    const property = getHostPropertyById(id, userId);
+    const property = await hostRepo.getHostPropertyById(id);
 
-    if (!property) {
+    if (!property || property.hostId !== userId) {
       res.status(404).json({
         success: false,
         error: { message: 'Propiedad no encontrada' }
@@ -131,7 +129,7 @@ export const updateHostPropertyController = async (req: Request, res: Response):
   try {
     const userId = (req as any).user?.userId;
     const { id } = req.params;
-    const updates: HostPropertyUpdate = req.body;
+    const updates = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -141,9 +139,9 @@ export const updateHostPropertyController = async (req: Request, res: Response):
       return;
     }
 
-    const success = updateHostProperty(id, userId, updates);
-    
-    if (!success) {
+    // Verificar que la propiedad pertenece al host
+    const property = await hostRepo.getHostPropertyById(id);
+    if (!property || property.hostId !== userId) {
       res.status(404).json({
         success: false,
         error: { message: 'Propiedad no encontrada' }
@@ -151,10 +149,21 @@ export const updateHostPropertyController = async (req: Request, res: Response):
       return;
     }
 
+    const updatedProperty = await hostRepo.updateHostProperty(id, updates);
+    
+    if (!updatedProperty) {
+      res.status(404).json({
+        success: false,
+        error: { message: 'Error actualizando propiedad' }
+      });
+      return;
+    }
+
     res.json({
       success: true,
       data: {
-        message: 'Propiedad actualizada exitosamente'
+        message: 'Propiedad actualizada exitosamente',
+        property: updatedProperty
       }
     });
   } catch (error) {
@@ -179,12 +188,22 @@ export const deleteHostPropertyController = async (req: Request, res: Response):
       return;
     }
 
-    const success = deleteHostProperty(id, userId);
+    // Verificar que la propiedad pertenece al host
+    const property = await hostRepo.getHostPropertyById(id);
+    if (!property || property.hostId !== userId) {
+      res.status(404).json({
+        success: false,
+        error: { message: 'Propiedad no encontrada' }
+      });
+      return;
+    }
+
+    const success = await hostRepo.deleteHostProperty(id);
     
     if (!success) {
       res.status(404).json({
         success: false,
-        error: { message: 'Propiedad no encontrada' }
+        error: { message: 'Error eliminando propiedad' }
       });
       return;
     }
@@ -217,15 +236,17 @@ export const getHostPropertyReservationsController = async (req: Request, res: R
       return;
     }
 
-    const reservations = getHostPropertyReservations(id, userId);
-    
-    if (reservations === null) {
+    // Verificar que la propiedad pertenece al host
+    const property = await hostRepo.getHostPropertyById(id);
+    if (!property || property.hostId !== userId) {
       res.status(404).json({
         success: false,
         error: { message: 'Propiedad no encontrada' }
       });
       return;
     }
+
+    const reservations = await reservationRepo.getPropertyReservations(id);
 
     res.json({
       success: true,
@@ -256,9 +277,9 @@ export const getHostPropertyReviewsController = async (req: Request, res: Respon
       return;
     }
 
-    const reviews = getHostPropertyReviews(id, userId);
-    
-    if (reviews === null) {
+    // Verificar que la propiedad pertenece al host
+    const property = await hostRepo.getHostPropertyById(id);
+    if (!property || property.hostId !== userId) {
       res.status(404).json({
         success: false,
         error: { message: 'Propiedad no encontrada' }
@@ -266,9 +287,14 @@ export const getHostPropertyReviewsController = async (req: Request, res: Respon
       return;
     }
 
+    const reviews = await reviewRepo.getPropertyReviews(id);
+
     res.json({
       success: true,
-      data: reviews
+      data: {
+        reviews,
+        total: reviews.length
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -291,7 +317,7 @@ export const getHostStatsController = async (req: Request, res: Response): Promi
       return;
     }
 
-    const stats = getHostStats(userId);
+    const stats = await hostRepo.getHostStats(userId);
 
     res.json({
       success: true,

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { findUserById, updateUser, updateUserPassword } from '../../models/auth/user';
+import { findUserById, updateUser, updateUserPassword } from '../../models';
 import { hashPassword, comparePassword } from '../../utils/jwtMock';
 import { validateName, validatePassword } from '../../utils/validation';
 
@@ -43,17 +43,15 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     if (location) updateData.location = location.trim();
     if (phone) updateData.phone = phone.trim();
 
-    const updatedUserResult = await updateUser(userId, updateData);
+    const updatedUser = await updateUser(userId, updateData);
     
-    if (!updatedUserResult.success || !updatedUserResult.data) {
+    if (!updatedUser) {
       res.status(500).json({
         success: false,
-        error: { message: updatedUserResult.error || 'Error actualizando perfil' }
+        error: { message: 'Error actualizando perfil' }
       });
       return;
     }
-
-    const updatedUser = updatedUserResult.data;
 
     res.json({
       success: true,

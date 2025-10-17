@@ -4,9 +4,9 @@ import {
   getUserReservations, 
   getPropertyReservations,
   updateReservationStatus,
-  checkAvailability
-} from '../../models/reservations/reservationMock';
-import { createNotification } from '../../models/notifications/notificationMock';
+  checkAvailability,
+  createNotification
+} from '../../models';
 
 // POST /api/reservations
 export const createReservationEndpoint = async (req: Request, res: Response): Promise<void> => {
@@ -42,7 +42,7 @@ export const createReservationEndpoint = async (req: Request, res: Response): Pr
     }
 
     // Crear reserva
-    const reservation = createReservation({
+    const reservation = await createReservation({
       propertyId,
       userId,
       hostId: 'host-1', // Mock host ID
@@ -56,13 +56,12 @@ export const createReservationEndpoint = async (req: Request, res: Response): Pr
     });
 
     // Crear notificación
-    createNotification({
+    await createNotification({
       userId,
-      type: 'booking',
+      type: 'info',
       title: 'Reserva creada',
       message: `Tu solicitud de reserva ha sido enviada. Espera la confirmación del host.`,
       isRead: false,
-      priority: 'medium',
       data: {
         reservationId: reservation.id,
         propertyId
@@ -94,7 +93,7 @@ export const getUserReservationsEndpoint = async (req: Request, res: Response): 
       return;
     }
 
-    const reservations = getUserReservations(userId);
+    const reservations = await getUserReservations(userId);
 
     res.json({
       success: true,
@@ -145,13 +144,12 @@ export const updateReservationStatusEndpoint = async (req: Request, res: Respons
     }
 
     // Crear notificación de cambio de estado
-    createNotification({
+    await createNotification({
       userId,
-      type: 'booking',
+      type: 'info',
       title: `Reserva ${status}`,
       message: `Tu reserva ha sido ${status}.`,
       isRead: false,
-      priority: 'high',
       data: {
         reservationId: id,
         status

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getPropertyById, searchProperties } from '../../models/properties/propertyMock';
+import { getPropertyById, searchProperties } from '../../models';
 
 // GET /api/properties/:id
 export const getProperty = async (req: Request, res: Response): Promise<void> => {
@@ -33,7 +33,7 @@ export const getPopularProperties = async (req: Request, res: Response): Promise
   try {
     const { limit = 10 } = req.query;
     
-    const result = searchProperties({
+    const result = await searchProperties({
       limit: Number(limit),
       minRating: 4.5
     });

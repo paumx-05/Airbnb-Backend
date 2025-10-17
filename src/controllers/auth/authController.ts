@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { findUserByEmail, createUser, findUserById, updateUserPassword, hashPassword, comparePassword, isPasswordValid } from '../../models/auth/user';
+import { findUserByEmail, createUser, findUserById, updateUserPassword, hashPassword, comparePassword, isPasswordValid } from '../../models';
 import { generateToken, comparePassword as mockComparePassword } from '../../utils/jwtMock';
 import { validateEmail, validateName, validateRequiredFields, sanitizeInput } from '../../utils/validation';
 import { sendPasswordResetEmail } from '../../utils/emailMock';
@@ -64,21 +64,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const hashedPassword = await hashPassword(password);
     
     // Usar la función createUser pero con validación de contraseña ya hecha
-    const newUserResult = await createUser({
+    const newUser = await createUser({
       email: sanitizedEmail,
       password: hashedPassword,
       name: sanitizedName
     });
-
-    if (!newUserResult.success || !newUserResult.data) {
-      res.status(500).json({
-        success: false,
-        error: { message: newUserResult.error || 'Error creando usuario' }
-      });
-      return;
-    }
-
-    const newUser = newUserResult.data;
 
     // Generar token
     const token = generateToken(newUser.id, newUser.email);
@@ -275,15 +265,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       const resetToken = generateResetToken(user.id, user.email);
       
       // Enviar email
-      const emailResult = await sendPasswordResetEmail(email, resetToken);
-      
-      if (!emailResult.success) {
-        res.status(500).json({
-          success: false,
-          error: { message: 'Error enviando email de recuperación' }
-        });
-        return;
-      }
+      await sendPasswordResetEmail(email, resetToken);
     }
     
     // Siempre devolver éxito por seguridad (no revelar si email existe)
@@ -346,15 +328,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 
     // Actualizar contraseña
     const hashedPassword = await hashPassword(newPassword);
-    const updateResult = await updateUserPassword(user.id, hashedPassword);
-    
-    if (!updateResult.success) {
-      res.status(500).json({
-        success: false,
-        error: { message: 'Error actualizando contraseña' }
-      });
-      return;
-    }
+    await updateUserPassword(user.id, hashedPassword);
     
     // Invalidar token usado
     invalidateResetToken(token);

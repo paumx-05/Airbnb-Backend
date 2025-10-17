@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { searchProperties, getPopularLocations, getAvailableAmenities } from '../../models/properties/propertyMock';
+import { searchProperties, getPopularLocations, getAvailableAmenities } from '../../models';
 
 // GET /api/search/properties
 export const searchPropertiesEndpoint = async (req: Request, res: Response): Promise<void> => {
@@ -34,7 +34,7 @@ export const searchPropertiesEndpoint = async (req: Request, res: Response): Pro
       offset: Number(offset)
     };
 
-    const result = searchProperties(filters);
+    const result = await searchProperties(filters);
 
     res.json({
       success: true,
@@ -71,15 +71,15 @@ export const getSearchSuggestions = async (req: Request, res: Response): Promise
     }
 
     const query = (q as string).toLowerCase();
-    const locations = getPopularLocations();
+    const locations = await getPopularLocations();
     
     const suggestions = locations
-      .filter(location => 
+      .filter((location: any) => 
         location.city.toLowerCase().includes(query) ||
         location.country.toLowerCase().includes(query)
       )
       .slice(0, 5)
-      .map(location => ({
+      .map((location: any) => ({
         type: 'location',
         text: `${location.city}, ${location.country}`,
         count: location.propertyCount
@@ -100,7 +100,7 @@ export const getSearchSuggestions = async (req: Request, res: Response): Promise
 // GET /api/search/filters
 export const getSearchFilters = async (req: Request, res: Response): Promise<void> => {
   try {
-    const amenities = getAvailableAmenities();
+    const amenities = await getAvailableAmenities();
     
     const filters = {
       propertyTypes: [
@@ -108,7 +108,7 @@ export const getSearchFilters = async (req: Request, res: Response): Promise<voi
         { value: 'private', label: 'Habitación privada' },
         { value: 'shared', label: 'Habitación compartida' }
       ],
-      amenities: amenities.map(amenity => ({
+      amenities: amenities.map((amenity: string) => ({
         value: amenity,
         label: amenity
       })),

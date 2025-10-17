@@ -1,59 +1,19 @@
-interface Property {
-  id: string;
-  title: string;
-  description: string;
-  location: {
-    address: string;
-    city: string;
-    country: string;
-    coordinates: {
-      lat: number;
-      lng: number;
-    };
-  };
-  type: 'entire' | 'private' | 'shared';
-  pricePerNight: number;
-  currency: string;
-  maxGuests: number;
-  bedrooms: number;
-  bathrooms: number;
-  amenities: string[];
-  images: string[];
-  rating: number;
-  reviewCount: number;
-  host: {
-    id: string;
-    name: string;
-    avatar: string;
-    isSuperhost: boolean;
-  };
-  availability: {
-    checkIn: string;
-    checkOut: string;
-    minNights: number;
-    maxNights: number;
-  };
-  instantBook: boolean;
-  createdAt: string;
-  isActive: boolean;
-}
+/**
+ * 🏠 MODELO MOCK DE PROPIEDADES
+ * 
+ * 📝 RESUMEN DEL ARCHIVO:
+ * Base de datos mock para listados de propiedades y funcionalidad de búsqueda.
+ * Proporciona datos de propiedades de ejemplo y operaciones básicas de búsqueda.
+ * 
+ * 🔧 IMPORTS Y DEPENDENCIAS:
+ * - Property: Interfaz de propiedad (definida en types/)
+ * - SearchFilters: Criterios de búsqueda (definida en types/)
+ */
 
-interface SearchFilters {
-  location?: string;
-  checkIn?: string;
-  checkOut?: string;
-  guests?: number;
-  propertyType?: 'entire' | 'private' | 'shared';
-  minPrice?: number;
-  maxPrice?: number;
-  amenities?: string[];
-  minRating?: number;
-  instantBook?: boolean;
-  limit?: number;
-  offset?: number;
-}
+import { Property, SearchFilters } from '../../types/properties';
 
-// Base de datos mock de propiedades
+// 💾 BASE DE DATOS MOCK EN MEMORIA
+// Datos de propiedades de ejemplo con ejemplos realistas
 const propertyDB = {
   properties: [
     {
@@ -66,30 +26,19 @@ const propertyDB = {
         country: 'México',
         coordinates: { lat: 19.4326, lng: -99.1332 }
       },
-      type: 'entire',
+      propertyType: 'entire',
+      price: 1500,
       pricePerNight: 1500,
-      currency: 'MXN',
       maxGuests: 4,
       bedrooms: 2,
       bathrooms: 2,
       amenities: ['WiFi', 'Cocina', 'Aire acondicionado', 'Estacionamiento'],
       images: ['https://via.placeholder.com/400x300', 'https://via.placeholder.com/400x300'],
       rating: 4.8,
-      reviewCount: 24,
-      host: {
-        id: 'host1',
-        name: 'María García',
-        avatar: 'https://via.placeholder.com/50x50',
-        isSuperhost: true
-      },
-      availability: {
-        checkIn: '15:00',
-        checkOut: '11:00',
-        minNights: 2,
-        maxNights: 30
-      },
+      hostId: 'host1',
       instantBook: true,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       isActive: true
     },
     {
@@ -102,30 +51,19 @@ const propertyDB = {
         country: 'México',
         coordinates: { lat: 21.1619, lng: -86.8515 }
       },
-      type: 'entire',
+      propertyType: 'entire',
+      price: 2500,
       pricePerNight: 2500,
-      currency: 'MXN',
       maxGuests: 6,
       bedrooms: 3,
       bathrooms: 2,
       amenities: ['WiFi', 'Cocina', 'Piscina', 'Playa privada', 'Aire acondicionado'],
       images: ['https://via.placeholder.com/400x300', 'https://via.placeholder.com/400x300'],
       rating: 4.9,
-      reviewCount: 18,
-      host: {
-        id: 'host2',
-        name: 'Carlos López',
-        avatar: 'https://via.placeholder.com/50x50',
-        isSuperhost: true
-      },
-      availability: {
-        checkIn: '16:00',
-        checkOut: '10:00',
-        minNights: 3,
-        maxNights: 14
-      },
+      hostId: 'host2',
       instantBook: false,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       isActive: true
     },
     {
@@ -138,105 +76,87 @@ const propertyDB = {
         country: 'México',
         coordinates: { lat: 20.6597, lng: -103.3496 }
       },
-      type: 'private',
+      propertyType: 'private',
+      price: 800,
       pricePerNight: 800,
-      currency: 'MXN',
       maxGuests: 2,
       bedrooms: 1,
       bathrooms: 1,
       amenities: ['WiFi', 'Desayuno incluido', 'Aire acondicionado'],
       images: ['https://via.placeholder.com/400x300'],
       rating: 4.5,
-      reviewCount: 12,
-      host: {
-        id: 'host3',
-        name: 'Ana Martínez',
-        avatar: 'https://via.placeholder.com/50x50',
-        isSuperhost: false
-      },
-      availability: {
-        checkIn: '14:00',
-        checkOut: '12:00',
-        minNights: 1,
-        maxNights: 7
-      },
+      hostId: 'host3',
       instantBook: true,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       isActive: true
     }
   ] as Property[],
   nextId: 4
 };
 
-// Funciones de búsqueda y filtrado
-export const searchProperties = (filters: SearchFilters): { properties: Property[], total: number } => {
-  let filteredProperties = propertyDB.properties.filter(p => p.isActive);
+// 🔍 FUNCIONES DE BÚSQUEDA Y FILTRADO
 
-  // Filtrar por ubicación
+/**
+ * 🔍 Busca propiedades con filtros básicos
+ * @param filters - Criterios de búsqueda
+ * @returns Array de propiedades filtradas
+ */
+export const searchProperties = (filters: SearchFilters): Property[] => {
+  let results = propertyDB.properties.filter(p => p.isActive);
+
+  // Filter by location
   if (filters.location) {
-    const locationLower = filters.location.toLowerCase();
-    filteredProperties = filteredProperties.filter(p => 
-      p.location.city.toLowerCase().includes(locationLower) ||
-      p.location.address.toLowerCase().includes(locationLower) ||
-      p.location.country.toLowerCase().includes(locationLower)
+    const location = filters.location.toLowerCase();
+    results = results.filter(p => 
+      p.location.city.toLowerCase().includes(location) ||
+      p.location.country.toLowerCase().includes(location)
     );
   }
 
-  // Filtrar por tipo de propiedad
+  // Filter by property type
   if (filters.propertyType) {
-    filteredProperties = filteredProperties.filter(p => p.type === filters.propertyType);
+    results = results.filter(p => p.propertyType === filters.propertyType);
   }
 
-  // Filtrar por precio
-  if (filters.minPrice) {
-    filteredProperties = filteredProperties.filter(p => p.pricePerNight >= filters.minPrice!);
-  }
-  if (filters.maxPrice) {
-    filteredProperties = filteredProperties.filter(p => p.pricePerNight <= filters.maxPrice!);
-  }
+  // Filter by price range
+  if (filters.minPrice) results = results.filter(p => p.pricePerNight >= filters.minPrice!);
+  if (filters.maxPrice) results = results.filter(p => p.pricePerNight <= filters.maxPrice!);
 
-  // Filtrar por huéspedes
+  // Filter by guest capacity
   if (filters.guests) {
-    filteredProperties = filteredProperties.filter(p => p.maxGuests >= filters.guests!);
+    results = results.filter(p => p.maxGuests >= filters.guests!);
   }
 
-  // Filtrar por amenidades
-  if (filters.amenities && filters.amenities.length > 0) {
-    filteredProperties = filteredProperties.filter(p => 
-      filters.amenities!.every(amenity => p.amenities.includes(amenity))
-    );
-  }
-
-  // Filtrar por calificación mínima
+  // Filter by rating
   if (filters.minRating) {
-    filteredProperties = filteredProperties.filter(p => p.rating >= filters.minRating!);
+    results = results.filter(p => p.rating && p.rating >= filters.minRating!);
   }
 
-  // Filtrar por reserva instantánea
-  if (filters.instantBook !== undefined) {
-    filteredProperties = filteredProperties.filter(p => p.instantBook === filters.instantBook);
-  }
-
-  const total = filteredProperties.length;
+  // Apply pagination
   const limit = filters.limit || 20;
   const offset = filters.offset || 0;
-
-  // Aplicar paginación
-  const paginatedProperties = filteredProperties.slice(offset, offset + limit);
-
-  return {
-    properties: paginatedProperties,
-    total
-  };
+  
+  return results.slice(offset, offset + limit);
 };
 
+/**
+ * 🏠 Obtiene una propiedad específica por ID
+ * @param id - ID de propiedad a buscar
+ * @returns Property si se encontró y está activa, null en caso contrario
+ */
 export const getPropertyById = (id: string): Property | null => {
   return propertyDB.properties.find(p => p.id === id && p.isActive) || null;
 };
 
+/**
+ * 📍 Obtiene ubicaciones populares con conteos de propiedades
+ * @returns Array de ubicaciones ordenadas por conteo de propiedades (top 10)
+ */
 export const getPopularLocations = (): Array<{ city: string, country: string, propertyCount: number }> => {
   const locationCounts: { [key: string]: { city: string, country: string, count: number } } = {};
   
+  // Count properties per location
   propertyDB.properties.forEach(property => {
     const key = `${property.location.city}-${property.location.country}`;
     if (locationCounts[key]) {
@@ -250,16 +170,24 @@ export const getPopularLocations = (): Array<{ city: string, country: string, pr
     }
   });
 
+  // Sort by property count and return top 10
   return Object.values(locationCounts)
     .map(({ city, country, count }) => ({ city, country, propertyCount: count }))
     .sort((a, b) => b.propertyCount - a.propertyCount)
     .slice(0, 10);
 };
 
+/**
+ * 🏡 Obtiene todas las amenidades únicas disponibles en las propiedades
+ * @returns Array ordenado de todas las amenidades disponibles
+ */
 export const getAvailableAmenities = (): string[] => {
   const amenitiesSet = new Set<string>();
+  
+  // Collect all unique amenities from all properties
   propertyDB.properties.forEach(property => {
     property.amenities.forEach(amenity => amenitiesSet.add(amenity));
   });
+  
   return Array.from(amenitiesSet).sort();
 };

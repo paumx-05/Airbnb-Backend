@@ -1,24 +1,26 @@
 /**
- * Modelo de Usuario con encriptación real de contraseñas
- * Preparado para integración futura con MongoDB usando Mongoose
+ * 👤 MODELO DE AUTENTICACIÓN DE USUARIO
  * 
- * Este modelo implementa:
- * - Encriptación real de contraseñas con bcryptjs
- * - Validaciones de negocio
+ * 📝 RESUMEN DEL ARCHIVO:
+ * Modelo avanzado de autenticación de usuario con encriptación real de contraseñas usando bcryptjs.
+ * Preparado para integración futura con MongoDB/Mongoose. Implementa gestión integral de usuarios
+ * con validaciones de negocio, manejo seguro de contraseñas y operaciones CRUD completas.
+ * 
+ * 🔧 CARACTERÍSTICAS PRINCIPALES:
+ * - Encriptación real de contraseñas con bcryptjs (12 rondas de sal)
+ * - Validaciones de lógica de negocio
  * - Interfaz compatible con MongoDB/Mongoose
- * - Funciones CRUD completas
+ * - Operaciones CRUD completas con manejo de errores
+ * - Utilidades de seguridad de contraseñas
  */
 
 import bcrypt from 'bcryptjs';
 import { User } from '../../types/auth';
 
 // =============================================================================
-// INTERFACES Y TIPOS
+// 🔧 TIPOS SIMPLIFICADOS
 // =============================================================================
 
-/**
- * Datos necesarios para crear un nuevo usuario
- */
 export interface CreateUserData {
   email: string;
   name: string;
@@ -26,9 +28,6 @@ export interface CreateUserData {
   avatar?: string;
 }
 
-/**
- * Datos que se pueden actualizar de un usuario
- */
 export interface UpdateUserData {
   name?: string;
   email?: string;
@@ -36,27 +35,18 @@ export interface UpdateUserData {
   isActive?: boolean;
 }
 
-/**
- * Respuesta de operaciones de usuario
- */
-export interface UserResponse {
-  success: boolean;
-  data?: User;
-  error?: string;
-}
-
 // =============================================================================
-// CONFIGURACIÓN DE ENCRIPTACIÓN
+// 🔐 CONFIGURACIÓN DE ENCRIPTACIÓN DE CONTRASEÑAS
 // =============================================================================
 
 /**
- * Configuración para el hash de contraseñas
- * SALT_ROUNDS: Número de rondas para el hash (recomendado: 10-12)
+ * 🔒 Configuración para hash de contraseñas
+ * SALT_ROUNDS: Número de rondas para hash bcrypt (recomendado: 10-12)
  */
 const SALT_ROUNDS = 12;
 
 // =============================================================================
-// BASE DE DATOS TEMPORAL EN MEMORIA
+// 💾 BASE DE DATOS TEMPORAL EN MEMORIA
 // =============================================================================
 // TODO: Reemplazar con MongoDB/Mongoose cuando esté disponible
 
@@ -81,13 +71,13 @@ const userDB: UserDB = {
 };
 
 // =============================================================================
-// FUNCIONES DE ENCRIPTACIÓN DE CONTRASEÑAS
+// 🔐 FUNCIONES DE ENCRIPTACIÓN DE CONTRASEÑAS
 // =============================================================================
 
 /**
- * Encripta una contraseña usando bcrypt
+ * 🔐 Encripta una contraseña usando bcrypt
  * @param password - Contraseña en texto plano
- * @returns Promise con el hash de la contraseña
+ * @returns Promise con la contraseña hasheada
  */
 export const hashPassword = async (password: string): Promise<string> => {
   try {
@@ -100,7 +90,7 @@ export const hashPassword = async (password: string): Promise<string> => {
 };
 
 /**
- * Compara una contraseña con su hash
+ * 🔍 Compara una contraseña con su hash
  * @param password - Contraseña en texto plano
  * @param hash - Hash almacenado
  * @returns Promise con true si coinciden, false si no
@@ -114,11 +104,11 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 };
 
 // =============================================================================
-// VALIDACIONES DE NEGOCIO
+// ✅ VALIDACIONES DE NEGOCIO
 // =============================================================================
 
 /**
- * Valida que el email no esté ya registrado
+ * ✅ Valida que el email no esté ya registrado
  * @param email - Email a validar
  * @param excludeUserId - ID de usuario a excluir de la validación (para actualizaciones)
  * @returns true si el email está disponible
@@ -131,22 +121,22 @@ export const isEmailAvailable = (email: string, excludeUserId?: string): boolean
 };
 
 /**
- * Valida la fortaleza de la contraseña
+ * ✅ Valida la fortaleza de la contraseña
  * @param password - Contraseña a validar
  * @returns true si la contraseña es válida
  */
 export const isPasswordValid = (password: string): boolean => {
-  // Simplificado: mínimo 8 caracteres
+  // Simplified: minimum 8 characters
   return Boolean(password && password.length >= 8);
 };
 
 // =============================================================================
-// FUNCIONES CRUD
+// 📋 FUNCIONES CRUD
 // =============================================================================
 
 /**
- * Busca un usuario por email
- * @param email - Email del usuario
+ * 🔍 Busca un usuario por dirección de email
+ * @param email - Dirección de email del usuario
  * @returns Usuario encontrado o null
  */
 export const findUserByEmail = async (email: string): Promise<User | null> => {
@@ -161,7 +151,7 @@ export const findUserByEmail = async (email: string): Promise<User | null> => {
 };
 
 /**
- * Busca un usuario por ID
+ * 🔍 Busca un usuario por ID
  * @param id - ID del usuario
  * @returns Usuario encontrado o null
  */
@@ -175,146 +165,100 @@ export const findUserById = async (id: string): Promise<User | null> => {
 };
 
 /**
- * Crea un nuevo usuario
+ * ➕ Crea un nuevo usuario con validación y encriptación
  * @param userData - Datos del usuario a crear
- * @returns Usuario creado
+ * @returns Usuario creado o lanza error si falla
  */
-export const createUser = async (userData: CreateUserData): Promise<UserResponse> => {
+export const createUser = async (userData: CreateUserData): Promise<User> => {
   try {
-    // Validar que el email esté disponible
+    // Validate email availability
     if (!isEmailAvailable(userData.email)) {
-      return {
-        success: false,
-        error: 'El email ya está registrado'
-      };
+      throw new Error('El email ya está registrado');
     }
 
-    // Validar contraseña solo si no está ya hasheada
-    const isAlreadyHashed = userData.password.startsWith('$2a$');
-    if (!isAlreadyHashed && !isPasswordValid(userData.password)) {
-      return {
-        success: false,
-        error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número'
-      };
+    // Validate password
+    if (!isPasswordValid(userData.password)) {
+      throw new Error('La contraseña debe tener al menos 8 caracteres');
     }
 
-    // Encriptar contraseña solo si no está ya hasheada
-    const hashedPassword = isAlreadyHashed ? userData.password : await hashPassword(userData.password);
+    // Encrypt password
+    const hashedPassword = await hashPassword(userData.password);
 
-    // Crear nuevo usuario
+    // Create new user
     const newUser: User = {
       id: userDB.nextId.toString(),
       email: userData.email.toLowerCase(),
       name: userData.name.trim(),
       password: hashedPassword,
-      avatar: userData.avatar || undefined,
+      avatar: userData.avatar,
       createdAt: new Date().toISOString(),
       isActive: true
     };
 
-    // Agregar a la base de datos temporal
     userDB.users.push(newUser);
     userDB.nextId++;
 
-    // Retornar usuario sin la contraseña
-    const { password, ...userWithoutPassword } = newUser;
-
-    return {
-      success: true,
-      data: newUser // En producción, retornar userWithoutPassword
-    };
+    return newUser;
   } catch (error) {
-    return {
-      success: false,
-      error: 'Error al crear usuario'
-    };
+    throw new Error(`Error al crear usuario: ${error instanceof Error ? error.message : 'Error desconocido'}`);
   }
 };
 
 /**
- * Actualiza un usuario existente
+ * ✏️ Actualiza un usuario existente
  * @param id - ID del usuario a actualizar
  * @param updates - Datos a actualizar
- * @returns Usuario actualizado
+ * @returns Usuario actualizado o lanza error si falla
  */
-export const updateUser = async (id: string, updates: UpdateUserData): Promise<UserResponse> => {
+export const updateUser = async (id: string, updates: UpdateUserData): Promise<User> => {
   try {
     const userIndex = userDB.users.findIndex(user => user.id === id);
     
     if (userIndex === -1) {
-      return {
-        success: false,
-        error: 'Usuario no encontrado'
-      };
+      throw new Error('Usuario no encontrado');
     }
 
-    // Validar email si se está actualizando
+    // Validate email if being updated
     if (updates.email && !isEmailAvailable(updates.email, id)) {
-      return {
-        success: false,
-        error: 'El email ya está registrado'
-      };
+      throw new Error('El email ya está registrado');
     }
 
-    // Preparar actualizaciones
-    const updateData: Partial<User> = {};
-    
-    if (updates.name) updateData.name = updates.name.trim();
-    if (updates.email) updateData.email = updates.email.toLowerCase();
-    if (updates.avatar !== undefined) updateData.avatar = updates.avatar;
-    if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
+    // Apply updates
+    if (updates.name) userDB.users[userIndex].name = updates.name.trim();
+    if (updates.email) userDB.users[userIndex].email = updates.email.toLowerCase();
+    if (updates.avatar !== undefined) userDB.users[userIndex].avatar = updates.avatar;
+    if (updates.isActive !== undefined) userDB.users[userIndex].isActive = updates.isActive;
 
-    // Aplicar actualizaciones
-    userDB.users[userIndex] = { 
-      ...userDB.users[userIndex], 
-      ...updateData 
-    };
-
-    return {
-      success: true,
-      data: userDB.users[userIndex]
-    };
+    return userDB.users[userIndex];
   } catch (error) {
-    return {
-      success: false,
-      error: 'Error al actualizar usuario'
-    };
+    throw new Error(`Error al actualizar usuario: ${error instanceof Error ? error.message : 'Error desconocido'}`);
   }
 };
 
 /**
- * Elimina un usuario (soft delete)
+ * 🗑️ Elimina un usuario (eliminación suave)
  * @param id - ID del usuario a eliminar
- * @returns true si se eliminó correctamente
+ * @returns Usuario marcado como inactivo o lanza error si falla
  */
-export const deleteUser = async (id: string): Promise<UserResponse> => {
+export const deleteUser = async (id: string): Promise<User> => {
   try {
     const userIndex = userDB.users.findIndex(user => user.id === id);
     
     if (userIndex === -1) {
-      return {
-        success: false,
-        error: 'Usuario no encontrado'
-      };
+      throw new Error('Usuario no encontrado');
     }
 
-    // Soft delete: marcar como inactivo en lugar de eliminar
+    // Soft delete: mark as inactive
     userDB.users[userIndex].isActive = false;
 
-    return {
-      success: true,
-      data: userDB.users[userIndex]
-    };
+    return userDB.users[userIndex];
   } catch (error) {
-    return {
-      success: false,
-      error: 'Error al eliminar usuario'
-    };
+    throw new Error(`Error al eliminar usuario: ${error instanceof Error ? error.message : 'Error desconocido'}`);
   }
 };
 
 /**
- * Obtiene todos los usuarios activos
+ * 📋 Obtiene todos los usuarios activos
  * @returns Lista de usuarios activos (sin contraseñas)
  */
 export const getAllUsers = async (): Promise<User[]> => {
@@ -323,7 +267,7 @@ export const getAllUsers = async (): Promise<User[]> => {
       .filter(user => user.isActive)
       .map(user => ({
         ...user,
-        password: '***' // Ocultar contraseña en respuestas
+        password: '***' // Hide password in responses
       }));
   } catch (error) {
     throw new Error('Error al obtener usuarios');
@@ -331,8 +275,8 @@ export const getAllUsers = async (): Promise<User[]> => {
 };
 
 /**
- * Verifica las credenciales de un usuario
- * @param email - Email del usuario
+ * 🔐 Verifica las credenciales del usuario
+ * @param email - Dirección de email del usuario
  * @param password - Contraseña en texto plano
  * @returns Usuario si las credenciales son válidas, null si no
  */
@@ -357,11 +301,11 @@ export const verifyCredentials = async (email: string, password: string): Promis
 };
 
 // =============================================================================
-// FUNCIONES DE UTILIDAD
+// 🛠️ FUNCIONES DE UTILIDAD
 // =============================================================================
 
 /**
- * Remueve la contraseña de un objeto usuario
+ * 🔒 Remueve la contraseña del objeto usuario
  * @param user - Usuario con contraseña
  * @returns Usuario sin contraseña
  */
@@ -371,8 +315,8 @@ export const removePasswordFromUser = (user: User): Omit<User, 'password'> => {
 };
 
 /**
- * Obtiene estadísticas de usuarios
- * @returns Estadísticas básicas
+ * 📊 Obtiene estadísticas de usuarios
+ * @returns Estadísticas básicas de usuarios
  */
 export const getUserStats = async (): Promise<{
   total: number;
@@ -391,39 +335,34 @@ export const getUserStats = async (): Promise<{
 };
 
 /**
- * Actualiza la contraseña de un usuario
+ * 🔐 Actualiza la contraseña de un usuario
  * @param id - ID del usuario
- * @param newPassword - Nueva contraseña hasheada
- * @returns Resultado de la operación
+ * @param newPassword - Nueva contraseña en texto plano
+ * @returns Usuario actualizado o lanza error si falla
  */
-export const updateUserPassword = async (id: string, newPassword: string): Promise<UserResponse> => {
+export const updateUserPassword = async (id: string, newPassword: string): Promise<User> => {
   try {
     const userIndex = userDB.users.findIndex(user => user.id === id);
     
     if (userIndex === -1) {
-      return {
-        success: false,
-        error: 'Usuario no encontrado'
-      };
+      throw new Error('Usuario no encontrado');
     }
 
-    // Actualizar contraseña
-    userDB.users[userIndex].password = newPassword;
+    // Validate and hash new password
+    if (!isPasswordValid(newPassword)) {
+      throw new Error('La contraseña debe tener al menos 8 caracteres');
+    }
 
-    return {
-      success: true,
-      data: userDB.users[userIndex]
-    };
+    userDB.users[userIndex].password = await hashPassword(newPassword);
+
+    return userDB.users[userIndex];
   } catch (error) {
-    return {
-      success: false,
-      error: 'Error al actualizar contraseña'
-    };
+    throw new Error(`Error al actualizar contraseña: ${error instanceof Error ? error.message : 'Error desconocido'}`);
   }
 };
 
 // =============================================================================
-// PREPARACIÓN PARA MONGODB
+// 🍃 PREPARACIÓN PARA MONGODB
 // =============================================================================
 // TODO: Implementar cuando MongoDB esté disponible
 
