@@ -17,8 +17,7 @@ const UserSchema = new Schema<IUser>({
     required: true, 
     unique: true, 
     lowercase: true,
-    trim: true,
-    index: true 
+    trim: true
   },
   name: { 
     type: String, 
@@ -47,8 +46,7 @@ const UserSchema = new Schema<IUser>({
   role: {
     type: String,
     enum: ['user', 'admin'],
-    default: 'user',
-    index: true
+    default: 'user'
   }
 }, {
   timestamps: true,
@@ -56,7 +54,6 @@ const UserSchema = new Schema<IUser>({
 });
 
 // Indexes
-UserSchema.index({ email: 1 });
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ role: 1 });
 

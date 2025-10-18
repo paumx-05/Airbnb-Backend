@@ -36,8 +36,7 @@ export interface IHostProperty extends Document {
 const HostPropertySchema = new Schema<IHostProperty>({
   hostId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   title: {
     type: String,

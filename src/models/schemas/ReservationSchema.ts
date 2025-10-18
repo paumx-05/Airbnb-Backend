@@ -18,13 +18,11 @@ export interface IReservation extends Document {
 const ReservationSchema = new Schema<IReservation>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   propertyId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   checkIn: {
     type: Date,
@@ -48,14 +46,12 @@ const ReservationSchema = new Schema<IReservation>({
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'cancelled', 'completed'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   paymentStatus: {
     type: String,
     enum: ['pending', 'paid', 'refunded'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   specialRequests: {
     type: String,

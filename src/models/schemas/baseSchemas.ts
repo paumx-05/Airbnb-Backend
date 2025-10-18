@@ -37,8 +37,7 @@ export const getCollectionOptions = (collectionName: string) => ({
 export const commonFields = {
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   createdAt: {
     type: Date,

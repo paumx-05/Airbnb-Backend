@@ -19,13 +19,11 @@ export interface IWishlist extends Document {
 const FavoriteSchema = new Schema<IFavorite>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   propertyId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   }
 }, {
   timestamps: { createdAt: true, updatedAt: false },
@@ -35,8 +33,7 @@ const FavoriteSchema = new Schema<IFavorite>({
 const WishlistSchema = new Schema<IWishlist>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   name: {
     type: String,
@@ -50,12 +47,10 @@ const WishlistSchema = new Schema<IWishlist>({
   },
   isPublic: {
     type: Boolean,
-    default: false,
-    index: true
+    default: false
   },
   propertyIds: [{
-    type: String,
-    index: true
+    type: String
   }]
 }, {
   timestamps: true,

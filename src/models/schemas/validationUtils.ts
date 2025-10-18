@@ -39,8 +39,7 @@ export const validateDateRange = function(this: any, next: any) {
 export const commonFields = {
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   createdAt: {
     type: Date,

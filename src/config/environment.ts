@@ -5,7 +5,7 @@
 
 export const config = {
   // Configuración del servidor
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '5000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   
   // Configuración de base de datos
@@ -13,7 +13,7 @@ export const config = {
   dbType: process.env.DB_TYPE || 'mock',
   
   // Configuración JWT
-  jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+  jwtSecret: process.env.JWT_SECRET || 'airbnb-backend-super-secret-jwt-key-2024-production-ready',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
   
   // Configuración de CORS

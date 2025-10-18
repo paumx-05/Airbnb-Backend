@@ -16,6 +16,11 @@ const connectDB = async (): Promise<void> => {
   
   if (config.type === 'mongodb') {
     try {
+      // Limpiar modelos existentes para evitar conflictos
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+      }
+      
       await mongoose.connect(config.mongoURI);
       console.log('✅ MongoDB conectado exitosamente');
     } catch (error) {

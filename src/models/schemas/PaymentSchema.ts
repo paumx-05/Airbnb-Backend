@@ -29,8 +29,7 @@ export interface ITransaction extends Document {
 const PaymentMethodSchema = new Schema<IPaymentMethod>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   type: {
     type: String,
@@ -66,18 +65,15 @@ const PaymentMethodSchema = new Schema<IPaymentMethod>({
 const TransactionSchema = new Schema<ITransaction>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   propertyId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   reservationId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   amount: {
     type: Number,
@@ -92,8 +88,7 @@ const TransactionSchema = new Schema<ITransaction>({
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed', 'refunded'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   paymentMethod: {
     type: String,
@@ -102,8 +97,7 @@ const TransactionSchema = new Schema<ITransaction>({
   transactionId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   description: {
     type: String,

@@ -16,6 +16,7 @@ import hostRoutes from './routes/host/hostRoutes';
 import favoriteRoutes from './routes/favorites/favoriteRoutes';
 import paymentRoutes from './routes/payments/paymentRoutes';
 import cartRoutes from './routes/cart/cartRoutes';
+import userRoutes from './routes/users/userRoutes';
 import errorHandler from './middleware/errorHandler';
 import logger from './utils/logger';
 import { generalRateLimit } from './middleware/rateLimiter';
@@ -197,6 +198,9 @@ app.use('/api/payments', paymentRoutes);
 
 // Rutas de carrito
 app.use('/api/cart', cartRoutes);
+
+// Rutas de usuarios
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

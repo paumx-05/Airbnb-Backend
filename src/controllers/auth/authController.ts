@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { findUserByEmail, createUser, findUserById, updateUserPassword, hashPassword, comparePassword, isPasswordValid } from '../../models';
-import { generateToken, comparePassword as mockComparePassword } from '../../utils/jwtMock';
+import { generateToken } from '../../utils/jwt';
 import { validateEmail, validateName, validateRequiredFields, sanitizeInput } from '../../utils/validation';
 import { sendPasswordResetEmail } from '../../utils/emailMock';
 import { generateResetToken, verifyResetToken, invalidateResetToken } from '../../utils/resetTokenMock';
@@ -128,7 +128,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Buscar usuario
+    console.log('🔍 Buscando usuario con email:', sanitizedEmail);
     const user = await findUserByEmail(sanitizedEmail);
+    console.log('👤 Usuario encontrado:', user ? 'Sí' : 'No');
+    if (user) {
+      console.log('📧 Email del usuario:', user.email);
+      console.log('🔐 Password hash:', user.password?.substring(0, 20) + '...');
+      console.log('✅ Usuario activo:', user.isActive);
+    }
+    
     if (!user) {
       res.status(401).json({
         success: false,
@@ -138,8 +146,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Verificar password usando la función correcta
+    console.log('🔐 Verificando contraseña...');
+    console.log('📝 Password recibido:', password);
     const isValidPassword = await comparePassword(password, user.password);
+    console.log('✅ Contraseña válida:', isValidPassword);
+    
     if (!isValidPassword) {
+      console.log('❌ Contraseña incorrecta');
       res.status(401).json({
         success: false,
         error: { message: 'Credenciales inválidas' }

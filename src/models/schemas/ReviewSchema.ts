@@ -22,25 +22,21 @@ export interface IReview extends Document {
 const ReviewSchema = new Schema<IReview>({
   propertyId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   reservationId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   rating: {
     type: Number,
     required: true,
     min: 1,
-    max: 5,
-    index: true
+    max: 5
   },
   comment: {
     type: String,

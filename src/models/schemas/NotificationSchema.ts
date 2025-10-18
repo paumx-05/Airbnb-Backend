@@ -28,14 +28,12 @@ export interface INotificationSettings extends Document {
 const NotificationSchema = new Schema<INotification>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   type: {
     type: String,
     enum: ['reservation', 'payment', 'review', 'system'],
-    required: true,
-    index: true
+    required: true
   },
   title: {
     type: String,
@@ -49,8 +47,7 @@ const NotificationSchema = new Schema<INotification>({
   },
   isRead: {
     type: Boolean,
-    default: false,
-    index: true
+    default: false
   },
   data: {
     type: Schema.Types.Mixed
@@ -64,8 +61,7 @@ const NotificationSettingsSchema = new Schema<INotificationSettings>({
   userId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   emailNotifications: { type: Boolean, default: true },
   pushNotifications: { type: Boolean, default: true },
@@ -83,7 +79,6 @@ const NotificationSettingsSchema = new Schema<INotificationSettings>({
 
 // Indexes
 NotificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
-NotificationSettingsSchema.index({ userId: 1 });
 
 export const NotificationModel = mongoose.model<INotification>('Notification', NotificationSchema);
 export const NotificationSettingsModel = mongoose.model<INotificationSettings>('NotificationSettings', NotificationSettingsSchema);

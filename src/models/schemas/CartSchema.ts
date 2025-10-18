@@ -21,13 +21,11 @@ export interface ICartItem extends Document {
 const CartItemSchema = new Schema<ICartItem>({
   userId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   propertyId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   checkIn: {
     type: Date,
@@ -80,8 +78,7 @@ const CartItemSchema = new Schema<ICartItem>({
   },
   expiresAt: {
     type: Date,
-    required: true,
-    index: true
+    required: true
   }
 }, {
   timestamps: true,

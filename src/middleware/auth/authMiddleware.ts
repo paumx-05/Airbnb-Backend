@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { verifyToken, extractTokenFromHeader } from '../../utils/jwtMock';
+import { verifyToken, extractTokenFromHeader } from '../../utils/jwt';
 import { AuthenticatedRequest } from '../../types/auth';
 
 export const authenticateToken = (
