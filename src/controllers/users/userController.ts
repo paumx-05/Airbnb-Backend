@@ -352,7 +352,12 @@ export const getUserStatistics = async (req: Request, res: Response): Promise<vo
     
     const response: UserResponse = {
       success: true,
-      data: { statistics: stats }
+      data: {
+        total: stats.total,
+        active: stats.active,
+        inactive: stats.inactive,
+        totalUsers: stats.total // Alias para compatibilidad
+      }
     };
     
     res.json(response);

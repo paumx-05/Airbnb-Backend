@@ -11,7 +11,7 @@ import { CartItem, CartData, CartSummary } from '../../types/cart';
 export interface ICartRepository {
   // 🛒 FUNCIONES DE CARRITO
   getCartByUserId(userId: string): Promise<CartData>;
-  addToCart(userId: string, item: Omit<CartItem, 'id' | 'createdAt' | 'expiresAt'>): Promise<CartItem>;
+  addToCart(userId: string, item: any): Promise<CartItem>;
   removeFromCart(userId: string, itemId: string): Promise<boolean>;
   updateCartItem(userId: string, itemId: string, updates: Partial<CartItem>): Promise<CartItem | null>;
   clearCart(userId: string): Promise<boolean>;

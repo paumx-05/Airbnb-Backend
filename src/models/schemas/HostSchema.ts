@@ -1,33 +1,21 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { urlValidator } from './validationUtils';
-import { locationSchema, getCollectionOptions } from './baseSchemas';
+import { getCollectionOptions } from './baseSchemas';
 
 export interface IHostProperty extends Document {
   hostId: string;
   title: string;
   description: string;
-  location: {
-    address: string;
-    city: string;
-    country: string;
-    coordinates: {
-      lat: number;
-      lng: number;
-    };
-  };
-  propertyType: 'entire' | 'private' | 'shared';
+  location: string; // Simplificado como string
+  propertyType: string;
   pricePerNight: number;
   maxGuests: number;
-  bedrooms: number;
-  bathrooms: number;
+  bedrooms?: number; // Opcional
+  bathrooms?: number; // Opcional
   amenities: string[];
   images: string[];
-  rules: string[];
-  availability: {
-    startDate: Date;
-    endDate: Date;
-    blockedDates: Date[];
-  };
+  rules?: string[];
+  isActive: boolean;
   status: 'active' | 'inactive' | 'pending';
   createdAt: Date;
   updatedAt: Date;
@@ -49,10 +37,13 @@ const HostPropertySchema = new Schema<IHostProperty>({
     required: true,
     maxlength: 2000
   },
-  location: locationSchema,
+  location: {
+    type: String,
+    required: true,
+    trim: true
+  },
   propertyType: {
     type: String,
-    enum: ['entire', 'private', 'shared'],
     required: true
   },
   pricePerNight: {
@@ -64,34 +55,34 @@ const HostPropertySchema = new Schema<IHostProperty>({
     type: Number,
     required: true,
     min: 1,
-    max: 20
+    max: 50
   },
   bedrooms: {
     type: Number,
-    required: true,
-    min: 0
+    required: false,
+    min: 0,
+    default: 1
   },
   bathrooms: {
     type: Number,
-    required: true,
-    min: 0
+    required: false,
+    min: 0,
+    default: 1
   },
   amenities: [{
     type: String,
     trim: true
   }],
   images: [{
-    type: String,
-    validate: urlValidator
+    type: String
   }],
   rules: [{
     type: String,
     trim: true
   }],
-  availability: {
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
-    blockedDates: [{ type: Date }]
+  isActive: {
+    type: Boolean,
+    default: true
   },
   status: {
     type: String,

@@ -9,14 +9,60 @@ import logger from '../utils/logger';
 // Lista de IPs bloqueadas (en producción usar Redis o base de datos)
 const blockedIPs = new Set<string>();
 
+/**
+ * 🔒 HEADERS DE SEGURIDAD COMPLETOS
+ * Implementa todos los headers de seguridad estándar recomendados por OWASP
+ */
 export const securityHeaders = (req: Request, res: Response, next: NextFunction): void => {
-  // Headers de seguridad adicionales
+  // Headers de seguridad completos
   res.set({
+    // Identificación del servidor
+    'X-Powered-By': 'Express/Node.js',
+    
+    // Prevenir MIME type sniffing
     'X-Content-Type-Options': 'nosniff',
+    
+    // Prevenir clickjacking
     'X-Frame-Options': 'DENY',
+    
+    // Protección XSS (legacy, pero aún útil para navegadores antiguos)
     'X-XSS-Protection': '1; mode=block',
+    
+    // Política de referrer
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+    
+    // Permisos de características del navegador
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+    
+    // Content Security Policy (CSP)
+    'Content-Security-Policy': [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'"
+    ].join('; '),
+    
+    // HTTP Strict Transport Security (HSTS)
+    // Solo habilitar en producción con HTTPS
+    ...(process.env.NODE_ENV === 'production' ? {
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
+    } : {}),
+    
+    // Prevenir DNS prefetching
+    'X-DNS-Prefetch-Control': 'off',
+    
+    // Deshabilitar descarga de recursos no seguros
+    'X-Download-Options': 'noopen',
+    
+    // Cache control para contenido sensible
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   });
 
   next();

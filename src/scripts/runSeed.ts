@@ -128,12 +128,7 @@ async function run() {
       hostId: adminId.toHexString(),
       title: 'Loft moderno del admin',
       description: 'Loft amplio y luminoso, ideal para trabajo remoto.',
-      location: {
-        address: 'Calle Sol 123',
-        city: 'Madrid',
-        country: 'España',
-        coordinates: { lat: 40.4168, lng: -3.7038 }
-      },
+      location: 'Calle Sol 123, Madrid, España',
       propertyType: 'entire',
       pricePerNight: 120,
       maxGuests: 3,
@@ -142,11 +137,6 @@ async function run() {
       amenities: ['WiFi', 'Calefacción', 'Cafetera'],
       images: ['https://picsum.photos/800/600?random=10'],
       rules: ['No fumar', 'No fiestas'],
-      availability: {
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 1000*60*60*24*120),
-        blockedDates: []
-      },
       status: 'active'
     });
 

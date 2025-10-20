@@ -98,6 +98,15 @@ export const addItemToCart = async (req: AuthenticatedRequest, res: Response): P
       return;
     }
     
+    // Calcular valores del carrito
+    const totalNights = Math.ceil((new Date(requestData.checkOut).getTime() - new Date(requestData.checkIn).getTime()) / (1000 * 60 * 60 * 24));
+    const pricePerNight = requestData.pricePerNight || 0;
+    const subtotal = pricePerNight * totalNights;
+    const cleaningFee = Math.round(subtotal * 0.10); // 10% de fee de limpieza
+    const serviceFee = Math.round(subtotal * 0.05); // 5% de fee de servicio
+    const taxes = Math.round(subtotal * 0.10); // 10% de impuestos
+    const total = subtotal + cleaningFee + serviceFee + taxes;
+    
     // Agregar al carrito
     const newItem = await addToCart(userId, {
       userId,
@@ -105,9 +114,13 @@ export const addItemToCart = async (req: AuthenticatedRequest, res: Response): P
       checkIn: requestData.checkIn,
       checkOut: requestData.checkOut,
       guests: requestData.guests,
-      pricePerNight: requestData.pricePerNight || 0,
-      totalNights: Math.ceil((new Date(requestData.checkOut).getTime() - new Date(requestData.checkIn).getTime()) / (1000 * 60 * 60 * 24)),
-      totalPrice: 0 // Será calculado por el repositorio
+      pricePerNight,
+      totalNights,
+      subtotal,
+      cleaningFee,
+      serviceFee,
+      taxes,
+      totalPrice: total
     });
     
     res.status(201).json({
@@ -312,12 +325,25 @@ export const getCartSummary = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
     
-    const summary = getCartSummaryModel(userId);
+    const summary = await getCartSummaryModel(userId);
+    
+    // Calcular totales estandarizados
+    const subtotal = summary.totalPrice || 0;
+    const taxes = Math.round(subtotal * 0.10); // 10% impuestos
+    const serviceFee = Math.round(subtotal * 0.05); // 5% fee de servicio
+    const total = subtotal + taxes + serviceFee;
     
     res.status(200).json({
       success: true,
       message: 'Resumen del carrito obtenido exitosamente',
-      data: summary
+      data: {
+        itemCount: summary.totalItems,
+        subtotal,
+        taxes,
+        serviceFee,
+        total,
+        items: summary.items
+      }
     } as CartResponse);
     
   } catch (error) {
@@ -445,7 +471,9 @@ export const getCartStatistics = async (req: AuthenticatedRequest, res: Response
     }
     
     // Verificar si es admin (simplificado para demo)
-    const isAdmin = req.user?.email === 'admin@airbnb.com';
+    const adminEmails = ['admin@demo.com', 'demo@airbnb.com'];
+    const isAdmin = req.user?.email && adminEmails.includes(req.user.email);
+    
     if (!isAdmin) {
       res.status(403).json({
         success: false,

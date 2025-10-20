@@ -20,6 +20,7 @@ import userRoutes from './routes/users/userRoutes';
 import errorHandler from './middleware/errorHandler';
 import logger from './utils/logger';
 import { generalRateLimit } from './middleware/rateLimiter';
+import { securityHeaders } from './middleware/security';
 
 dotenv.config();
 const app = express();
@@ -27,8 +28,11 @@ const app = express();
 // =============================================================================
 // MIDDLEWARES BÁSICOS (ORDEN IMPORTANTE)
 // =============================================================================
-// Middleware de seguridad
+// Middleware de seguridad con Helmet
 app.use(helmet());
+
+// Headers de seguridad personalizados adicionales
+app.use(securityHeaders);
 
 // CORS: Permite peticiones desde diferentes dominios
 app.use(cors());

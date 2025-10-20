@@ -20,10 +20,20 @@ export class CartRepositoryMongo implements ICartRepository {
     };
   }
 
-  async addToCart(userId: string, item: Omit<CartItem, 'id' | 'createdAt' | 'expiresAt'>): Promise<CartItem> {
+  async addToCart(userId: string, item: any): Promise<CartItem> {
     const newItem = new CartItemModel({
-      ...item,
       userId,
+      propertyId: item.propertyId,
+      checkIn: new Date(item.checkIn),
+      checkOut: new Date(item.checkOut),
+      guests: item.guests,
+      pricePerNight: item.pricePerNight,
+      totalNights: item.totalNights,
+      subtotal: item.subtotal,
+      cleaningFee: item.cleaningFee,
+      serviceFee: item.serviceFee,
+      taxes: item.taxes,
+      total: item.totalPrice,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
     });
     const savedItem = await newItem.save();

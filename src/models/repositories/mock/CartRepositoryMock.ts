@@ -24,10 +24,17 @@ export class CartRepositoryMock implements ICartRepository {
     };
   }
 
-  async addToCart(userId: string, item: Omit<CartItem, 'id' | 'createdAt' | 'expiresAt'>): Promise<CartItem> {
+  async addToCart(userId: string, item: any): Promise<CartItem> {
     const newItem: CartItem = {
-      ...item,
       id: this.cartDB.nextId.toString(),
+      userId: item.userId,
+      propertyId: item.propertyId,
+      checkIn: item.checkIn,
+      checkOut: item.checkOut,
+      guests: item.guests,
+      pricePerNight: item.pricePerNight,
+      totalNights: item.totalNights,
+      totalPrice: item.totalPrice,
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 horas
     };

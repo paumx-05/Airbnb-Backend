@@ -72,9 +72,9 @@ export class HostRepositoryMongo implements IHostRepository {
       maxGuests: mongoProperty.maxGuests,
       amenities: mongoProperty.amenities || [],
       images: mongoProperty.images || [],
-      isActive: mongoProperty.isActive !== false, // Default to true if not specified
-      createdAt: mongoProperty.createdAt.toISOString(),
-      updatedAt: mongoProperty.updatedAt.toISOString()
+      isActive: mongoProperty.isActive !== false,
+      createdAt: mongoProperty.createdAt ? mongoProperty.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: mongoProperty.updatedAt ? mongoProperty.updatedAt.toISOString() : new Date().toISOString()
     };
   }
 }

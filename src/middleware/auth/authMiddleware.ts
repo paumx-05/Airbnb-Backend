@@ -83,9 +83,10 @@ export const requireAdmin = (
       return;
     }
 
-    // En un sistema real, aquí verificaríamos roles de admin
-    // Para mock, asumimos que el usuario demo es admin
-    if (req.user.email === 'demo@airbnb.com') {
+    // En un sistema real, aquí verificaríamos roles de admin desde la BD
+    // Para demo, asumimos que admin@demo.com y demo@airbnb.com son admins
+    const adminEmails = ['admin@demo.com', 'demo@airbnb.com'];
+    if (adminEmails.includes(req.user.email)) {
       next();
     } else {
       res.status(403).json({

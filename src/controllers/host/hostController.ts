@@ -43,7 +43,7 @@ export const getHostPropertiesController = async (req: Request, res: Response): 
 export const createHostPropertyController = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
-    const { title, description, pricePerNight, location, amenities, images, maxGuests, propertyType } = req.body;
+    const { title, description, pricePerNight, location, amenities, images, maxGuests, propertyType, bedrooms, bathrooms } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -58,6 +58,23 @@ export const createHostPropertyController = async (req: Request, res: Response):
       res.status(400).json({
         success: false,
         error: { message: 'title, description, pricePerNight, location, maxGuests y propertyType son requeridos' }
+      });
+      return;
+    }
+
+    // Validar tipos de datos
+    if (typeof pricePerNight !== 'number' || pricePerNight <= 0) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'pricePerNight debe ser un número mayor a 0' }
+      });
+      return;
+    }
+
+    if (typeof maxGuests !== 'number' || maxGuests <= 0) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'maxGuests debe ser un número mayor a 0' }
       });
       return;
     }
@@ -80,10 +97,14 @@ export const createHostPropertyController = async (req: Request, res: Response):
       success: true,
       data: property
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Error creando propiedad:', error);
     res.status(500).json({
       success: false,
-      error: { message: 'Error creando propiedad' }
+      error: { 
+        message: 'Error creando propiedad',
+        details: error.message || 'Error desconocido'
+      }
     });
   }
 };
