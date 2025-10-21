@@ -17,13 +17,14 @@ const router = Router();
 router.use(authenticateToken);
 
 // Rutas de notificaciones
+// IMPORTANTE: Las rutas específicas deben ir antes de las rutas con parámetros dinámicos
 router.get('/', getNotifications);
-router.patch('/:id/read', markAsRead);
 router.patch('/mark-all-read', markAllNotificationsAsRead);
-router.delete('/:id', removeNotification);
 router.delete('/clear-all', clearAllUserNotifications);
 router.post('/test', createTestNotification);
 router.get('/settings', getUserNotificationSettings);
 router.put('/settings', updateUserNotificationSettings);
+router.patch('/:id/read', markAsRead);
+router.delete('/:id', removeNotification);
 
 export default router;

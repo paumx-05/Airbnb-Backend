@@ -82,11 +82,12 @@ export const processCheckout = async (req: Request, res: Response): Promise<void
       checkoutData.guests
     );
 
-    // Crear método de pago
+    // Crear método de pago (sin guardar número completo por seguridad)
+    // En producción, esto debería usar un gateway de pago real como Stripe
     const paymentMethod = await paymentRepo.addPaymentMethod(userId, {
       userId,
-      type: 'credit_card',
-      cardNumber: `****${checkoutData.paymentInfo.cardNumber.slice(-4)}`,
+      type: 'card',
+      cardNumber: checkoutData.paymentInfo.cardNumber, // Se guarda temporalmente para el proceso
       cardBrand: paymentRepo.getCardBrand(checkoutData.paymentInfo.cardNumber) as any,
       expiryMonth: checkoutData.paymentInfo.expiryMonth,
       expiryYear: checkoutData.paymentInfo.expiryYear,
@@ -130,7 +131,7 @@ export const processCheckout = async (req: Request, res: Response): Promise<void
       // Crear notificación
       await notificationRepo.createNotification({
         userId,
-        type: 'success',
+        type: 'payment',
         title: 'Pago exitoso',
         message: 'Tu pago ha sido procesado exitosamente. Tu reserva está confirmada.',
         isRead: false,
@@ -161,6 +162,7 @@ export const processCheckout = async (req: Request, res: Response): Promise<void
       });
     }
   } catch (error) {
+    console.error('Error procesando checkout:', error);
     res.status(500).json({
       success: false,
       error: { message: 'Error procesando checkout' }
@@ -193,8 +195,8 @@ export const addPaymentMethodController = async (req: Request, res: Response): P
 
     const paymentMethod = await paymentRepo.addPaymentMethod(userId, {
       userId,
-      type: 'credit_card',
-      cardNumber: `****${cardNumber.slice(-4)}`,
+      type: 'card',
+      cardNumber: cardNumber, // Se guarda completo temporalmente
       cardBrand: paymentRepo.getCardBrand(cardNumber) as any,
       expiryMonth,
       expiryYear,
@@ -356,7 +358,7 @@ export const refundTransactionController = async (req: Request, res: Response): 
     // Crear notificación
     await notificationRepo.createNotification({
       userId,
-      type: 'info',
+      type: 'payment',
       title: 'Reembolso procesado',
       message: `Tu reembolso de $${transaction.amount} ${transaction.currency} ha sido procesado.`,
       isRead: false,

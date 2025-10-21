@@ -1,7 +1,7 @@
 export interface PaymentMethod {
   id: string;
   userId: string;
-  type: 'credit_card' | 'debit_card' | 'paypal' | 'bank_transfer';
+  type: 'card' | 'paypal' | 'bank_transfer';
   cardNumber?: string;
   cardBrand?: 'visa' | 'mastercard' | 'amex' | 'discover';
   expiryMonth?: number;

@@ -6,6 +6,9 @@ export interface IUser extends Document {
   name: string;
   password: string;
   avatar?: string;
+  bio?: string;
+  location?: string;
+  phone?: string;
   createdAt: Date;
   isActive: boolean;
   role: 'user' | 'admin';
@@ -34,6 +37,18 @@ const UserSchema = new Schema<IUser>({
   avatar: { 
     type: String,
     validate: urlValidator
+  },
+  bio: {
+    type: String,
+    maxlength: 500
+  },
+  location: {
+    type: String,
+    maxlength: 100
+  },
+  phone: {
+    type: String,
+    maxlength: 20
   },
   createdAt: { 
     type: Date, 

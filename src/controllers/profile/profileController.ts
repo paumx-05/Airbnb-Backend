@@ -1,7 +1,56 @@
 import { Request, Response } from 'express';
 import { findUserById, updateUser, updateUserPassword } from '../../models';
-import { hashPassword, comparePassword } from '../../utils/jwtMock';
+import { hashPassword } from '../../utils/jwtMock';
 import { validateName, validatePassword } from '../../utils/validation';
+import bcrypt from 'bcryptjs';
+import { UserSettingsModel } from '../../models/schemas/UserSettingsSchema';
+
+// GET /api/profile
+export const getProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: { message: 'Usuario no autenticado' }
+      });
+      return;
+    }
+
+    const user = await findUserById(userId);
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: { message: 'Usuario no encontrado' }
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatar: user.avatar,
+          bio: (user as any).bio,
+          location: (user as any).location,
+          phone: (user as any).phone,
+          role: (user as any).role,
+          isActive: user.isActive,
+          createdAt: user.createdAt
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error obteniendo perfil' }
+    });
+  }
+};
 
 // PUT /api/profile
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
@@ -80,7 +129,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 export const changePassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -95,6 +144,15 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
       res.status(400).json({
         success: false,
         error: { message: 'Contraseña actual y nueva contraseña son requeridas' }
+      });
+      return;
+    }
+
+    // Validar confirmación de contraseña
+    if (confirmPassword && newPassword !== confirmPassword) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Las contraseñas no coinciden' }
       });
       return;
     }
@@ -125,7 +183,8 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     }
 
     // Verificar contraseña actual
-    if (!comparePassword(currentPassword, user.password)) {
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
       res.status(401).json({
         success: false,
         error: { message: 'Contraseña actual incorrecta' }
@@ -171,36 +230,49 @@ export const getProfileSettings = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // Configuración mock por defecto
-    const settings = {
-      notifications: {
-        email: true,
-        push: true,
-        sound: true,
-        marketing: false,
-        propertyUpdates: true,
-        searchAlerts: true,
-        muteAll: false
-      },
-      privacy: {
-        showProfile: true,
-        showEmail: false,
-        showPhone: false,
-        showLocation: true
-      },
-      preferences: {
-        language: 'es',
-        timezone: 'America/Mexico_City',
-        currency: 'MXN',
-        theme: 'light'
-      }
-    };
+    // Obtener configuración de BD o crear valores por defecto
+    let userSettings = await UserSettingsModel.findOne({ userId });
+    
+    if (!userSettings) {
+      // Crear configuración por defecto si no existe
+      userSettings = await UserSettingsModel.create({
+        userId,
+        notifications: {
+          email: true,
+          push: true,
+          sound: true,
+          marketing: false,
+          propertyUpdates: true,
+          searchAlerts: true,
+          muteAll: false
+        },
+        privacy: {
+          showProfile: true,
+          showEmail: false,
+          showPhone: false,
+          showLocation: true
+        },
+        preferences: {
+          language: 'es',
+          timezone: 'America/Mexico_City',
+          currency: 'MXN',
+          theme: 'light'
+        }
+      });
+    }
 
     res.json({
       success: true,
-      data: { settings }
+      data: { 
+        settings: {
+          notifications: userSettings.notifications,
+          privacy: userSettings.privacy,
+          preferences: userSettings.preferences
+        }
+      }
     });
   } catch (error) {
+    console.error('Error obteniendo configuración:', error);
     res.status(500).json({
       success: false,
       error: { message: 'Error obteniendo configuración' }
@@ -222,39 +294,53 @@ export const updateProfileSettings = async (req: Request, res: Response): Promis
       return;
     }
 
-    // Validar y procesar configuración
-    const settings = {
-      notifications: {
-        email: Boolean(notifications?.email),
-        push: Boolean(notifications?.push),
-        sound: Boolean(notifications?.sound),
-        marketing: Boolean(notifications?.marketing),
-        propertyUpdates: Boolean(notifications?.propertyUpdates),
-        searchAlerts: Boolean(notifications?.searchAlerts),
-        muteAll: Boolean(notifications?.muteAll)
-      },
-      privacy: {
-        showProfile: Boolean(privacy?.showProfile),
-        showEmail: Boolean(privacy?.showEmail),
-        showPhone: Boolean(privacy?.showPhone),
-        showLocation: Boolean(privacy?.showLocation)
-      },
-      preferences: {
-        language: preferences?.language || 'es',
-        timezone: preferences?.timezone || 'America/Mexico_City',
-        currency: preferences?.currency || 'MXN',
-        theme: preferences?.theme || 'light'
-      }
-    };
+    // Preparar actualización
+    const updateData: any = {};
+    
+    if (notifications) {
+      updateData['notifications.email'] = Boolean(notifications.email);
+      updateData['notifications.push'] = Boolean(notifications.push);
+      updateData['notifications.sound'] = Boolean(notifications.sound);
+      updateData['notifications.marketing'] = Boolean(notifications.marketing);
+      updateData['notifications.propertyUpdates'] = Boolean(notifications.propertyUpdates);
+      updateData['notifications.searchAlerts'] = Boolean(notifications.searchAlerts);
+      updateData['notifications.muteAll'] = Boolean(notifications.muteAll);
+    }
+    
+    if (privacy) {
+      updateData['privacy.showProfile'] = Boolean(privacy.showProfile);
+      updateData['privacy.showEmail'] = Boolean(privacy.showEmail);
+      updateData['privacy.showPhone'] = Boolean(privacy.showPhone);
+      updateData['privacy.showLocation'] = Boolean(privacy.showLocation);
+    }
+    
+    if (preferences) {
+      if (preferences.language) updateData['preferences.language'] = preferences.language;
+      if (preferences.timezone) updateData['preferences.timezone'] = preferences.timezone;
+      if (preferences.currency) updateData['preferences.currency'] = preferences.currency;
+      if (preferences.theme) updateData['preferences.theme'] = preferences.theme;
+    }
+
+    // Actualizar o crear en BD
+    const userSettings = await UserSettingsModel.findOneAndUpdate(
+      { userId },
+      { $set: updateData },
+      { new: true, upsert: true }
+    );
 
     res.json({
       success: true,
       data: { 
-        settings,
+        settings: {
+          notifications: userSettings.notifications,
+          privacy: userSettings.privacy,
+          preferences: userSettings.preferences
+        },
         message: 'Configuración actualizada exitosamente'
       }
     });
   } catch (error) {
+    console.error('Error actualizando configuración:', error);
     res.status(500).json({
       success: false,
       error: { message: 'Error actualizando configuración' }

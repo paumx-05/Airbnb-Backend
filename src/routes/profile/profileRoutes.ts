@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { 
+  getProfile,
   updateProfile, 
   changePassword, 
   getProfileSettings, 
@@ -13,6 +14,7 @@ const router = Router();
 router.use(authenticateToken);
 
 // Rutas de perfil
+router.get('/', getProfile);
 router.put('/', updateProfile);
 router.post('/change-password', changePassword);
 router.get('/settings', getProfileSettings);

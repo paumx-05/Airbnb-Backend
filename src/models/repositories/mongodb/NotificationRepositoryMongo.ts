@@ -41,8 +41,13 @@ export class NotificationRepositoryMongo implements INotificationRepository {
   }
 
   async clearAllNotifications(userId: string): Promise<boolean> {
-    const result = await NotificationModel.deleteMany({ userId });
-    return result.deletedCount > 0;
+    try {
+      const result = await NotificationModel.deleteMany({ userId });
+      return result.deletedCount >= 0; // Retornar true incluso si no hay notificaciones que eliminar
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      throw error;
+    }
   }
 
   async getNotificationSettings(userId: string): Promise<NotificationSettings> {
@@ -74,7 +79,7 @@ export class NotificationRepositoryMongo implements INotificationRepository {
   async createTestNotification(userId: string): Promise<Notification> {
     return this.createNotification({
       userId,
-      type: 'info',
+      type: 'system',
       title: 'Notificación de Prueba',
       message: 'Esta es una notificación de prueba del sistema.',
       isRead: false

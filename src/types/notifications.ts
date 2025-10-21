@@ -3,7 +3,7 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'reservation' | 'payment' | 'review' | 'system';
   isRead: boolean;
   createdAt: string;
   data?: any;
@@ -13,7 +13,7 @@ export interface CreateNotificationData {
   userId: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'reservation' | 'payment' | 'review' | 'system';
   data?: any;
 }
 

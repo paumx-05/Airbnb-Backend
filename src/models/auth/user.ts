@@ -228,6 +228,11 @@ export const updateUser = async (id: string, updates: UpdateUserData): Promise<U
     if (updates.email) userDB.users[userIndex].email = updates.email.toLowerCase();
     if (updates.avatar !== undefined) userDB.users[userIndex].avatar = updates.avatar;
     if (updates.isActive !== undefined) userDB.users[userIndex].isActive = updates.isActive;
+    
+    // Update profile fields
+    if ((updates as any).bio !== undefined) (userDB.users[userIndex] as any).bio = (updates as any).bio;
+    if ((updates as any).location !== undefined) (userDB.users[userIndex] as any).location = (updates as any).location;
+    if ((updates as any).phone !== undefined) (userDB.users[userIndex] as any).phone = (updates as any).phone;
 
     return userDB.users[userIndex];
   } catch (error) {

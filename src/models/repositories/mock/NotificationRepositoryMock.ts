@@ -110,7 +110,7 @@ export class NotificationRepositoryMock implements INotificationRepository {
   async createTestNotification(userId: string): Promise<Notification> {
     return await this.createNotification({
       userId,
-      type: 'info',
+      type: 'system',
       title: 'Notificación de Prueba',
       message: 'Esta es una notificación de prueba del sistema.',
       isRead: false

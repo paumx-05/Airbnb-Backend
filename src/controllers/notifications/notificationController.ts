@@ -164,16 +164,16 @@ export const clearAllUserNotifications = async (req: Request, res: Response): Pr
     }
 
     const success = await notificationRepo.clearAllNotifications(userId);
-    const count = success ? 1 : 0;
 
     res.json({
       success: true,
       data: { 
-        message: `${count} notificaciones eliminadas`,
-        count 
+        message: 'Todas las notificaciones han sido eliminadas',
+        cleared: success
       }
     });
   } catch (error) {
+    console.error('Error eliminando notificaciones:', error);
     res.status(500).json({
       success: false,
       error: { message: 'Error eliminando notificaciones' }
@@ -185,7 +185,7 @@ export const clearAllUserNotifications = async (req: Request, res: Response): Pr
 export const createTestNotification = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
-    const { type = 'info', title = 'Notificación de prueba', message = 'Esta es una notificación de prueba' } = req.body;
+    const { type = 'system', title = 'Notificación de prueba', message = 'Esta es una notificación de prueba' } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -195,9 +195,19 @@ export const createTestNotification = async (req: Request, res: Response): Promi
       return;
     }
 
+    // Validar que el tipo sea válido
+    const validTypes = ['reservation', 'payment', 'review', 'system'];
+    if (!validTypes.includes(type)) {
+      res.status(400).json({
+        success: false,
+        error: { message: `Tipo de notificación no válido. Debe ser uno de: ${validTypes.join(', ')}` }
+      });
+      return;
+    }
+
     const notification = await notificationRepo.createNotification({
       userId,
-      type: type as 'info' | 'success' | 'warning' | 'error',
+      type: type as 'reservation' | 'payment' | 'review' | 'system',
       title,
       message,
       isRead: false
@@ -208,6 +218,7 @@ export const createTestNotification = async (req: Request, res: Response): Promi
       data: { notification }
     });
   } catch (error) {
+    console.error('Error creando notificación de prueba:', error);
     res.status(500).json({
       success: false,
       error: { message: 'Error creando notificación de prueba' }

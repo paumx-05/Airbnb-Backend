@@ -58,7 +58,7 @@ export const createReservationEndpoint = async (req: Request, res: Response): Pr
     // Crear notificación
     await createNotification({
       userId,
-      type: 'info',
+      type: 'reservation',
       title: 'Reserva creada',
       message: `Tu solicitud de reserva ha sido enviada. Espera la confirmación del host.`,
       isRead: false,
@@ -146,7 +146,7 @@ export const updateReservationStatusEndpoint = async (req: Request, res: Respons
     // Crear notificación de cambio de estado
     await createNotification({
       userId,
-      type: 'info',
+      type: 'reservation',
       title: `Reserva ${status}`,
       message: `Tu reserva ha sido ${status}.`,
       isRead: false,

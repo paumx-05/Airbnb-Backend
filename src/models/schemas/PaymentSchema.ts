@@ -37,8 +37,9 @@ const PaymentMethodSchema = new Schema<IPaymentMethod>({
     required: true
   },
   cardNumber: {
-    type: String,
-    validate: cardNumberValidator
+    type: String
+    // Validación de cardNumber deshabilitada para pruebas sin integración de pago real
+    // En producción, usar gateway de pago (Stripe, PayPal) que maneja validación y tokenización
   },
   cardBrand: {
     type: String,

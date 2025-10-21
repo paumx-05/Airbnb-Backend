@@ -102,7 +102,27 @@ export class PaymentRepositoryMock implements IPaymentRepository {
   }
 
   async validatePaymentData(paymentData: any): Promise<boolean> {
-    return paymentData && paymentData.amount > 0;
+    // Validar que los datos de pago existan y tengan los campos requeridos
+    if (!paymentData) return false;
+    
+    // Validar número de tarjeta
+    if (!paymentData.cardNumber || paymentData.cardNumber.length < 13) return false;
+    
+    // Validar CVV
+    if (!paymentData.cvv || paymentData.cvv.length < 3) return false;
+    
+    // Validar expiry
+    if (!paymentData.expiryMonth || !paymentData.expiryYear) return false;
+    if (paymentData.expiryMonth < 1 || paymentData.expiryMonth > 12) return false;
+    if (paymentData.expiryYear < new Date().getFullYear()) return false;
+    
+    // Validar nombre del titular
+    if (!paymentData.cardholderName || paymentData.cardholderName.trim().length < 3) return false;
+    
+    // Validar dirección de facturación
+    if (!paymentData.billingAddress || !paymentData.billingAddress.street || !paymentData.billingAddress.city) return false;
+    
+    return true;
   }
 
   async processPayment(checkoutData: CheckoutData): Promise<Transaction> {
@@ -111,7 +131,7 @@ export class PaymentRepositoryMock implements IPaymentRepository {
     const paymentMethod: PaymentMethod = {
       id: '1',
       userId: 'user123', // Simulado
-      type: 'credit_card',
+      type: 'card',
       cardNumber: checkoutData.paymentInfo.cardNumber,
       cardBrand: 'visa',
       expiryMonth: checkoutData.paymentInfo.expiryMonth,
