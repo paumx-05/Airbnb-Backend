@@ -30,7 +30,7 @@ const ReviewSchema = new Schema<IReview>({
   },
   reservationId: {
     type: String,
-    required: true
+    required: false
   },
   rating: {
     type: Number,
@@ -44,12 +44,12 @@ const ReviewSchema = new Schema<IReview>({
     maxlength: 1000
   },
   categories: {
-    cleanliness: { type: Number, required: true, min: 1, max: 5 },
-    communication: { type: Number, required: true, min: 1, max: 5 },
-    checkin: { type: Number, required: true, min: 1, max: 5 },
-    accuracy: { type: Number, required: true, min: 1, max: 5 },
-    location: { type: Number, required: true, min: 1, max: 5 },
-    value: { type: Number, required: true, min: 1, max: 5 }
+    cleanliness: { type: Number, required: false, min: 1, max: 5 },
+    communication: { type: Number, required: false, min: 1, max: 5 },
+    checkin: { type: Number, required: false, min: 1, max: 5 },
+    accuracy: { type: Number, required: false, min: 1, max: 5 },
+    location: { type: Number, required: false, min: 1, max: 5 },
+    value: { type: Number, required: false, min: 1, max: 5 }
   },
   isVerified: {
     type: Boolean,
@@ -63,8 +63,5 @@ const ReviewSchema = new Schema<IReview>({
 // Indexes
 ReviewSchema.index({ propertyId: 1, rating: -1 });
 ReviewSchema.index({ userId: 1 });
-
-// Compound index to prevent duplicate reviews
-ReviewSchema.index({ propertyId: 1, userId: 1, reservationId: 1 }, { unique: true });
 
 export const ReviewModel = mongoose.model<IReview>('Review', ReviewSchema);

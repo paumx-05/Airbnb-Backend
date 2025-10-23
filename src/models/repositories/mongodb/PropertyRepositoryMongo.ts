@@ -117,11 +117,12 @@ export class PropertyRepositoryMongo implements IPropertyRepository {
 
   private mapToProperty(mongoProperty: any): Property {
     return {
+      _id: mongoProperty._id.toString(), // Incluir _id para compatibilidad con APIs
       id: mongoProperty._id.toString(),
       title: mongoProperty.title,
       description: mongoProperty.description,
-      price: mongoProperty.pricePerNight, // Usar pricePerNight como price
-      pricePerNight: mongoProperty.pricePerNight,
+      price: mongoProperty.pricePerNight || mongoProperty.price || 0, // Usar pricePerNight como price, con fallback
+      pricePerNight: mongoProperty.pricePerNight || mongoProperty.price || 0,
       location: mongoProperty.location,
       propertyType: mongoProperty.propertyType,
       maxGuests: mongoProperty.maxGuests,
@@ -129,12 +130,14 @@ export class PropertyRepositoryMongo implements IPropertyRepository {
       bathrooms: mongoProperty.bathrooms,
       amenities: mongoProperty.amenities || [],
       images: mongoProperty.images || [],
-      hostId: mongoProperty.hostId,
+      hostId: mongoProperty.host?.id || mongoProperty.hostId, // Soportar ambos formatos
+      host: mongoProperty.host, // Incluir objeto host completo si existe
       isActive: mongoProperty.isActive !== false, // Default to true if not specified
       rating: mongoProperty.rating,
+      reviewCount: mongoProperty.reviewCount,
       instantBook: mongoProperty.instantBook,
-      createdAt: mongoProperty.createdAt.toISOString(),
-      updatedAt: mongoProperty.updatedAt.toISOString()
-    };
+      createdAt: mongoProperty.createdAt?.toISOString ? mongoProperty.createdAt.toISOString() : mongoProperty.createdAt,
+      updatedAt: mongoProperty.updatedAt?.toISOString ? mongoProperty.updatedAt.toISOString() : mongoProperty.updatedAt
+    } as any; // Cast para permitir el campo _id adicional
   }
 }

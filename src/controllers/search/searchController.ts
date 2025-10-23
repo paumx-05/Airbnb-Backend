@@ -38,16 +38,7 @@ export const searchPropertiesEndpoint = async (req: Request, res: Response): Pro
 
     res.json({
       success: true,
-      data: {
-        properties: result.properties,
-        total: result.total,
-        filters: filters,
-        pagination: {
-          limit: filters.limit,
-          offset: filters.offset,
-          hasMore: result.total > filters.offset + filters.limit
-        }
-      }
+      data: result.properties || []
     });
   } catch (error) {
     res.status(500).json({
@@ -65,7 +56,7 @@ export const getSearchSuggestions = async (req: Request, res: Response): Promise
     if (!q || (q as string).length < 2) {
       res.json({
         success: true,
-        data: { suggestions: [] }
+        data: []
       });
       return;
     }
@@ -75,8 +66,8 @@ export const getSearchSuggestions = async (req: Request, res: Response): Promise
     
     const suggestions = locations
       .filter((location: any) => 
-        location.city.toLowerCase().includes(query) ||
-        location.country.toLowerCase().includes(query)
+        location.city?.toLowerCase().includes(query) ||
+        location.country?.toLowerCase().includes(query)
       )
       .slice(0, 5)
       .map((location: any) => ({
@@ -87,7 +78,7 @@ export const getSearchSuggestions = async (req: Request, res: Response): Promise
 
     res.json({
       success: true,
-      data: { suggestions }
+      data: suggestions
     });
   } catch (error) {
     res.status(500).json({

@@ -102,6 +102,7 @@ export class ReviewRepositoryMongo implements IReviewRepository {
 
   private mapToReview(mongoReview: any): Review {
     return {
+      _id: mongoReview._id.toString(),
       id: mongoReview._id.toString(),
       propertyId: mongoReview.propertyId,
       userId: mongoReview.userId,
@@ -110,7 +111,8 @@ export class ReviewRepositoryMongo implements IReviewRepository {
       comment: mongoReview.comment,
       categories: mongoReview.categories,
       isVerified: mongoReview.isVerified,
-      createdAt: mongoReview.createdAt.toISOString()
-    };
+      createdAt: mongoReview.createdAt?.toISOString ? mongoReview.createdAt.toISOString() : mongoReview.createdAt,
+      updatedAt: mongoReview.updatedAt?.toISOString ? mongoReview.updatedAt.toISOString() : mongoReview.updatedAt
+    } as any;
   }
 }

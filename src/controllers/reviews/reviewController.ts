@@ -27,10 +27,10 @@ export const createReviewController = async (req: Request, res: Response): Promi
     }
 
     // Validaciones básicas
-    if (!propertyId || !reservationId || !rating || !comment || !categories) {
+    if (!propertyId || !rating || !comment) {
       res.status(400).json({
         success: false,
-        error: { message: 'propertyId, reservationId, rating, comment y categories son requeridos' }
+        error: { message: 'propertyId, rating y comment son requeridos' }
       });
       return;
     }
@@ -44,27 +44,29 @@ export const createReviewController = async (req: Request, res: Response): Promi
       return;
     }
 
-    // Validar categorías
-    const requiredCategories = ['cleanliness', 'communication', 'checkin', 'accuracy', 'location', 'value'];
-    for (const category of requiredCategories) {
-      if (!categories[category] || categories[category] < 1 || categories[category] > 5) {
-        res.status(400).json({
-          success: false,
-          error: { message: `Categoría ${category} debe estar entre 1 y 5` }
-        });
-        return;
+    // Validar categorías si están presentes
+    if (categories) {
+      const requiredCategories = ['cleanliness', 'communication', 'checkin', 'accuracy', 'location', 'value'];
+      for (const category of requiredCategories) {
+        if (categories[category] && (categories[category] < 1 || categories[category] > 5)) {
+          res.status(400).json({
+            success: false,
+            error: { message: `Categoría ${category} debe estar entre 1 y 5` }
+          });
+          return;
+        }
       }
     }
 
     // Crear review
-    const review = createReview({
+    const review = await createReview({
       propertyId,
       userId,
       reservationId,
       rating,
       comment,
-      categories,
-      isVerified: true // En un sistema real, verificaríamos la reserva
+      categories: categories || {},
+      isVerified: reservationId ? true : false
     });
 
     res.status(201).json({
@@ -93,10 +95,7 @@ export const getPropertyReviewsController = async (req: Request, res: Response):
 
     res.json({
       success: true,
-      data: {
-        reviews,
-        total: reviews.length
-      }
+      data: reviews
     });
   } catch (error) {
     res.status(500).json({
@@ -133,10 +132,7 @@ export const getUserReviewsController = async (req: Request, res: Response): Pro
 
     res.json({
       success: true,
-      data: {
-        reviews,
-        total: reviews.length
-      }
+      data: reviews
     });
   } catch (error) {
     res.status(500).json({
@@ -151,7 +147,7 @@ export const getPropertyReviewStatsController = async (req: Request, res: Respon
   try {
     const { id } = req.params;
 
-    const stats = getPropertyReviewStats(id);
+    const stats = await getPropertyReviewStats(id);
 
     res.json({
       success: true,
@@ -225,12 +221,21 @@ export const updateReviewController = async (req: Request, res: Response): Promi
       return;
     }
 
+    // Validar rating si se proporciona
+    if (rating !== undefined && (rating < 1 || rating > 5)) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Rating debe estar entre 1 y 5' }
+      });
+      return;
+    }
+
     const updates: any = {};
     if (rating !== undefined) updates.rating = rating;
     if (comment !== undefined) updates.comment = comment;
     if (categories !== undefined) updates.categories = categories;
 
-    const success = updateReview(id, updates);
+    const success = await updateReview(id, updates);
     
     if (!success) {
       res.status(500).json({

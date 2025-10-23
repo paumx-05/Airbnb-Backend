@@ -31,8 +31,37 @@ export const createReservationEndpoint = async (req: Request, res: Response): Pr
       return;
     }
 
+    // Validar que guests sea un número positivo
+    if (typeof guests !== 'number' || guests < 1) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'El número de huéspedes debe ser mayor a 0' }
+      });
+      return;
+    }
+
+    // Validar formato de fechas
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    
+    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Formato de fechas inválido' }
+      });
+      return;
+    }
+
+    if (checkInDate >= checkOutDate) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'La fecha de check-out debe ser posterior a la de check-in' }
+      });
+      return;
+    }
+
     // Verificar disponibilidad
-    const isAvailable = checkAvailability(propertyId, checkIn, checkOut);
+    const isAvailable = await checkAvailability(propertyId, checkIn, checkOut);
     if (!isAvailable) {
       res.status(400).json({
         success: false,
@@ -70,7 +99,7 @@ export const createReservationEndpoint = async (req: Request, res: Response): Pr
 
     res.status(201).json({
       success: true,
-      data: { reservation }
+      data: reservation
     });
   } catch (error) {
     res.status(500).json({
@@ -97,10 +126,7 @@ export const getUserReservationsEndpoint = async (req: Request, res: Response): 
 
     res.json({
       success: true,
-      data: { 
-        reservations,
-        total: reservations.length
-      }
+      data: reservations
     });
   } catch (error) {
     res.status(500).json({
@@ -133,7 +159,7 @@ export const updateReservationStatusEndpoint = async (req: Request, res: Respons
       return;
     }
 
-    const success = updateReservationStatus(id, status);
+    const success = await updateReservationStatus(id, status);
     
     if (!success) {
       res.status(404).json({
@@ -185,7 +211,7 @@ export const checkAvailabilityEndpoint = async (req: Request, res: Response): Pr
       return;
     }
 
-    const isAvailable = checkAvailability(
+    const isAvailable = await checkAvailability(
       propertyId as string,
       checkIn as string,
       checkOut as string
@@ -194,7 +220,7 @@ export const checkAvailabilityEndpoint = async (req: Request, res: Response): Pr
     res.json({
       success: true,
       data: { 
-        isAvailable,
+        available: isAvailable,
         propertyId,
         checkIn,
         checkOut
