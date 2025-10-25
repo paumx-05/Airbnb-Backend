@@ -69,6 +69,7 @@ JWT_SECRET=tu-secreto-jwt-aqui
 | POST | `/api/auth/register` | Registro de usuario | No |
 | POST | `/api/auth/login` | Inicio de sesión | No |
 | POST | `/api/auth/logout` | Cerrar sesión | No |
+| POST | `/api/auth/refresh` | Renovar token | No |
 | GET | `/api/auth/me` | Obtener perfil | Sí |
 | GET | `/api/auth/test` | Prueba de middleware | Opcional |
 
@@ -89,6 +90,36 @@ Para rutas protegidas, incluye el header:
 ```
 Authorization: Bearer <tu-token-jwt>
 ```
+
+### 🔄 Renovación Automática de Tokens
+
+El sistema incluye renovación automática de tokens para mantener sesiones activas:
+
+#### Endpoint de Refresh
+```
+POST /api/auth/refresh
+Content-Type: application/json
+
+{
+  "token": "tu-token-actual"
+}
+```
+
+#### Respuesta Exitosa
+```json
+{
+  "success": true,
+  "data": {
+    "token": "nuevo-token-jwt",
+    "message": "Token renovado exitosamente"
+  }
+}
+```
+
+#### Middleware de Renovación Automática
+- **`authenticateWithAutoRefresh`**: Autentica y renueva automáticamente tokens próximos a expirar
+- **Headers de respuesta**: `X-New-Token` y `X-Token-Refreshed` cuando se renueva un token
+- **Umbral de renovación**: 15 minutos antes de la expiración
 
 ### Respuesta de Error de Autenticación
 

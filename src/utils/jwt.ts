@@ -147,6 +147,16 @@ export const isTokenNearExpiry = (token: string, minutesThreshold: number = 30):
   }
 };
 
+/**
+ * 🔄 Verifica si un token necesita ser renovado
+ * @param token - Token JWT
+ * @param minutesThreshold - Minutos antes de expiración para renovar
+ * @returns true si necesita renovación
+ */
+export const shouldRefreshToken = (token: string, minutesThreshold: number = 15): boolean => {
+  return isTokenNearExpiry(token, minutesThreshold);
+};
+
 export default {
   generateToken,
   verifyToken,

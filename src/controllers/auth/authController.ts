@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { findUserByEmail, createUser, findUserById, updateUserPassword, hashPassword, comparePassword, isPasswordValid } from '../../models';
-import { generateToken } from '../../utils/jwt';
+import { generateToken, refreshToken } from '../../utils/jwt';
 import { validateEmail, validateName, validateRequiredFields, sanitizeInput } from '../../utils/validation';
 import { sendPasswordResetEmail } from '../../utils/emailMock';
 import { generateResetToken, verifyResetToken, invalidateResetToken } from '../../utils/resetTokenMock';
@@ -60,13 +60,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Crear usuario usando la función del modelo simplificada
-    const hashedPassword = await hashPassword(password);
-    
-    // Usar la función createUser pero con validación de contraseña ya hecha
+    // Crear usuario - el repositorio se encarga del hash de la contraseña
     const newUser = await createUser({
       email: sanitizedEmail,
-      password: hashedPassword,
+      password: password, // Enviar contraseña en texto plano
       name: sanitizedName
     });
 
@@ -354,6 +351,52 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     });
   } catch (error) {
     console.error('Error en resetPassword:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Error interno del servidor' }
+    });
+  }
+};
+
+// POST /api/auth/refresh
+export const refreshTokenEndpoint = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+    
+    // Validar que se proporcione el token
+    if (!token) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Token requerido' }
+      });
+      return;
+    }
+    
+    console.log('🔄 Intentando refrescar token...');
+    
+    // Intentar refrescar el token
+    const newToken = refreshToken(token);
+    
+    if (!newToken) {
+      console.log('❌ Token inválido o expirado para refresh');
+      res.status(401).json({
+        success: false,
+        error: { message: 'Token inválido o expirado' }
+      });
+      return;
+    }
+    
+    console.log('✅ Token refrescado exitosamente');
+    
+    res.json({
+      success: true,
+      data: {
+        token: newToken,
+        message: 'Token renovado exitosamente'
+      }
+    });
+  } catch (error) {
+    console.error('Error en refreshToken:', error);
     res.status(500).json({
       success: false,
       error: { message: 'Error interno del servidor' }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, logout, getProfile, forgotPassword, resetPassword } from '../../controllers/auth/authController';
+import { register, login, logout, getProfile, forgotPassword, resetPassword, refreshTokenEndpoint } from '../../controllers/auth/authController';
 import { authenticateToken, optionalAuth } from '../../middleware/auth/authMiddleware';
 import { authRateLimit } from '../../middleware/rateLimiter';
 
@@ -14,6 +14,7 @@ router.post('/login', login);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/refresh', refreshTokenEndpoint);
 
 // Rutas protegidas
 router.get('/me', authenticateToken, getProfile);
