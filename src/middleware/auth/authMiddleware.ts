@@ -84,8 +84,8 @@ export const requireAdmin = (
     }
 
     // En un sistema real, aquí verificaríamos roles de admin desde la BD
-    // Para demo, asumimos que admin@demo.com y demo@airbnb.com son admins
-    const adminEmails = ['admin@demo.com', 'demo@airbnb.com'];
+    // Para demo, asumimos que admin@demo.com, demo@airbnb.com y admin@airbnb.com son admins
+    const adminEmails = ['admin@demo.com', 'demo@airbnb.com', 'admin@airbnb.com'];
     if (adminEmails.includes(req.user.email)) {
       next();
     } else {

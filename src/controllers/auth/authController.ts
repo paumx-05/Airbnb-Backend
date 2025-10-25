@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import { findUserByEmail, createUser, findUserById, updateUserPassword, hashPassword, comparePassword, isPasswordValid } from '../../models';
 import { generateToken, refreshToken } from '../../utils/jwt';
 import { validateEmail, validateName, validateRequiredFields, sanitizeInput } from '../../utils/validation';
-import { sendPasswordResetEmail } from '../../utils/emailMock';
+// Removed emailMock import - using Resend directly
 import { generateResetToken, verifyResetToken, invalidateResetToken } from '../../utils/resetTokenMock';
 import { AuthResponse } from '../../types/auth';
+import { Resend } from 'resend';
 
 // POST /api/auth/register
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -268,14 +269,69 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     }
     
     // Buscar usuario (por seguridad, no revelamos si existe o no)
+    console.log('🔍 Buscando usuario con email:', email);
     const user = await findUserByEmail(email);
+    console.log('👤 Usuario encontrado:', user ? 'Sí' : 'No');
+    if (user) {
+      console.log('📧 Email del usuario:', user.email);
+      console.log('✅ Usuario activo:', user.isActive);
+    }
     
     if (user && user.isActive) {
+      console.log('✅ Usuario activo encontrado, generando token...');
       // Generar token de reset
       const resetToken = generateResetToken(user.id, user.email);
       
-      // Enviar email
-      await sendPasswordResetEmail(email, resetToken);
+      // Enviar email usando Resend
+      try {
+        console.log('📧 Iniciando envío de email...');
+        console.log('🔑 API Key configurada:', process.env.RESEND_API_KEY ? 'Sí' : 'No');
+        const resend = new Resend(process.env.RESEND_API_KEY || 're_xxxxxxxxx');
+        
+        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+        console.log('🔗 Reset link:', resetLink);
+        const emailResult = await resend.emails.send({
+          from: 'Airbnb <onboarding@resend.dev>',
+          to: ['delivered@resend.dev'], // Enviar al email del usuario que solicitó el reset
+          subject: 'Recuperación de contraseña - Airbnb',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #FF385C;">Recuperación de contraseña</h2>
+              <p>Hola,</p>
+              <p>Recibiste este email porque solicitaste recuperar tu contraseña para tu cuenta de Airbnb.</p>
+              <p>Haz clic en el siguiente botón para restablecer tu contraseña:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetLink}" style="background: #FF385C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+                  Restablecer contraseña
+                </a>
+              </div>
+              <p><strong>Este enlace expirará en 24 horas.</strong></p>
+              <p>Si no solicitaste este cambio, puedes ignorar este email de forma segura.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+              <p style="color: #666; font-size: 14px;">
+                Saludos,<br>
+                El equipo de Airbnb
+              </p>
+            </div>
+          `
+        });
+        
+        console.log('📧 Email de recuperación enviado:', {
+          to: 'delivered@resend.dev',
+          messageId: emailResult.data?.id,
+          success: true
+        });
+        console.log('✅ Email enviado exitosamente a delivered@resend.dev');
+        
+      } catch (emailError: any) {
+        console.error('❌ Error enviando email de recuperación:', emailError);
+        console.error('❌ Detalles del error:', emailError.message);
+        if (emailError.response) {
+          console.error('❌ Response status:', emailError.response.status);
+          console.error('❌ Response data:', emailError.response.data);
+        }
+        // No fallar el proceso por error de email
+      }
     }
     
     // Siempre devolver éxito por seguridad (no revelar si email existe)
