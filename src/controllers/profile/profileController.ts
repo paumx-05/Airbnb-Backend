@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { findUserById, updateUser, updateUserPassword, hashPassword } from '../../models';
+import { findUserById, updateUser, updateUserPassword, hashPassword, comparePassword } from '../../models';
 import { validateName, validatePassword } from '../../utils/validation';
-import bcrypt from 'bcryptjs';
 import { UserSettingsModel } from '../../models/schemas/UserSettingsSchema';
 
 // GET /api/profile
@@ -182,7 +181,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     }
 
     // Verificar contraseña actual
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const isPasswordValid = await comparePassword(currentPassword, user.password);
     if (!isPasswordValid) {
       res.status(401).json({
         success: false,

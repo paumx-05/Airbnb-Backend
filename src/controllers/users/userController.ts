@@ -369,3 +369,62 @@ export const getUserStatistics = async (req: Request, res: Response): Promise<vo
     });
   }
 };
+
+/**
+ * PATCH /api/users/:id/role
+ * Actualizar rol del usuario (solo admin)
+ */
+export const updateUserRole = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    
+    if (!id) {
+      res.status(400).json({
+        success: false,
+        error: 'ID de usuario requerido'
+      });
+      return;
+    }
+    
+    if (!role || !['user', 'admin'].includes(role)) {
+      res.status(400).json({
+        success: false,
+        error: 'Rol inválido. Debe ser "user" o "admin"'
+      });
+      return;
+    }
+    
+    // Verificar que el usuario existe
+    const existingUser = await findUserById(id);
+    if (!existingUser) {
+      res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado'
+      });
+      return;
+    }
+    
+    // Actualizar rol del usuario
+    const updateData: UpdateUserData = { role: role as 'user' | 'admin' };
+    const user = await updateUser(id, updateData);
+    
+    // Remover contraseña de la respuesta
+    const safeUser = removePasswordFromUser(user);
+    
+    const response: UserResponse = {
+      success: true,
+      data: { user: safeUser },
+      message: `Rol del usuario actualizado a "${role}" exitosamente`
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error en updateUserRole:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
+    res.status(error instanceof Error && error.message.includes('encontrado') ? 404 : 500).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+};

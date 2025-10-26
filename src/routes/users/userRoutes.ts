@@ -11,7 +11,8 @@ import {
   createNewUser,
   updateUserById,
   deleteUserById,
-  getUserStatistics
+  getUserStatistics,
+  updateUserRole
 } from '../../controllers/users/userController';
 import { authenticateToken } from '../../middleware/auth/authMiddleware';
 import {
@@ -60,6 +61,12 @@ router.post('/', authenticateToken, validateCreateUser, createNewUser);
  */
 router.put('/:id', authenticateToken, validateUserId, validateUpdateUser, updateUserById);
 
+/**
+ * PATCH /api/users/:id/role
+ * Actualizar rol del usuario
+ * Body: { role: "user" | "admin" }
+ */
+router.patch('/:id/role', authenticateToken, validateUserId, updateUserRole);
 
 /**
  * DELETE /api/users/:id

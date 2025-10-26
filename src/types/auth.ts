@@ -6,6 +6,7 @@ export interface User {
   avatar?: string;
   createdAt: string;
   isActive: boolean;
+  role?: 'user' | 'admin';
 }
 
 export interface UserDB {
@@ -58,4 +59,5 @@ export interface UpdateUserData {
   name?: string;
   avatar?: string;
   isActive?: boolean;
+  role?: 'user' | 'admin';
 }

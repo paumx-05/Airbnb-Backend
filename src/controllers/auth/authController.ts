@@ -3,7 +3,7 @@ import { findUserByEmail, createUser, findUserById, updateUserPassword, hashPass
 import { generateToken, refreshToken } from '../../utils/jwt';
 import { validateEmail, validateName, validateRequiredFields, sanitizeInput } from '../../utils/validation';
 // Removed emailMock import - using Resend directly
-import { generateResetToken, verifyResetToken, invalidateResetToken } from '../../utils/resetTokenMock';
+import { generateResetToken, verifyResetToken, invalidateResetToken, getActiveTokensCount } from '../../utils/resetToken';
 import { AuthResponse } from '../../types/auth';
 import { Resend } from 'resend';
 
@@ -126,14 +126,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Buscar usuario
-    console.log('🔍 Buscando usuario con email:', sanitizedEmail);
     const user = await findUserByEmail(sanitizedEmail);
-    console.log('👤 Usuario encontrado:', user ? 'Sí' : 'No');
-    if (user) {
-      console.log('📧 Email del usuario:', user.email);
-      console.log('🔐 Password hash:', user.password?.substring(0, 20) + '...');
-      console.log('✅ Usuario activo:', user.isActive);
-    }
     
     if (!user) {
       res.status(401).json({
@@ -144,13 +137,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Verificar password usando la función correcta
-    console.log('🔐 Verificando contraseña...');
-    console.log('📝 Password recibido:', password);
     const isValidPassword = await comparePassword(password, user.password);
-    console.log('✅ Contraseña válida:', isValidPassword);
     
     if (!isValidPassword) {
-      console.log('❌ Contraseña incorrecta');
       res.status(401).json({
         success: false,
         error: { message: 'Credenciales inválidas' }
@@ -257,7 +246,6 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 // POST /api/auth/forgot-password
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('🔄 Iniciando proceso de recuperación de contraseña...');
     const { email } = req.body;
     
     // Validar email
@@ -269,38 +257,28 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       return;
     }
     
-    // Buscar usuario (por seguridad, no revelamos si existe o no)
-    console.log('🔍 Buscando usuario con email:', email);
+    // Buscar usuario
     const user = await findUserByEmail(email);
-    console.log('👤 Usuario encontrado:', user ? 'Sí' : 'No');
-    if (user) {
-      console.log('📧 Email del usuario:', user.email);
-      console.log('✅ Usuario activo:', user.isActive);
-    }
     
     if (user && user.isActive) {
-      console.log('✅ Usuario activo encontrado, generando token...');
       // Generar token de reset
       const resetToken = generateResetToken(user.id, user.email);
       
       const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/api/auth/reset-password?token=${resetToken}`;
       
-      // Log solo del token con el link
       console.log(resetLink);
+      // Token generado (sin mostrar en consola)
       
       // También escribir en archivo para debugging
       const fs = require('fs');
       fs.writeFileSync('reset-token.txt', resetLink);
-      console.log('📄 Token guardado en reset-token.txt');
       
       // Enviar email usando Resend
       try {
-        console.log('📧 Iniciando envío de email...');
-        console.log('🔑 API Key configurada:', process.env.RESEND_API_KEY ? 'Sí' : 'No');
         const resend = new Resend(process.env.RESEND_API_KEY || 're_xxxxxxxxx');
         const emailResult = await resend.emails.send({
           from: 'Airbnb <onboarding@resend.dev>',
-          to: ['delivered@resend.dev'], // Enviar al email del usuario que solicitó el reset
+          to: ['delivered@resend.dev'],
           subject: 'Recuperación de contraseña - Airbnb',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -324,20 +302,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
           `
         });
         
-        console.log('📧 Email de recuperación enviado:', {
-          to: 'delivered@resend.dev',
-          messageId: emailResult.data?.id,
-          success: true
-        });
-        console.log('✅ Email enviado exitosamente a delivered@resend.dev');
-        
       } catch (emailError: any) {
-        console.error('❌ Error enviando email de recuperación:', emailError);
-        console.error('❌ Detalles del error:', emailError.message);
-        if (emailError.response) {
-          console.error('❌ Response status:', emailError.response.status);
-          console.error('❌ Response data:', emailError.response.data);
-        }
         // No fallar el proceso por error de email
       }
     }
@@ -381,7 +346,17 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     }
     
     // Verificar token
-    const decoded = verifyResetToken(token);
+    console.log('Token recibido:', token);
+    
+    // Decodificar URL si es necesario
+    const cleanToken = decodeURIComponent(token);
+    console.log('Token limpio:', cleanToken);
+    
+    // Debug: verificar si el token está en memoria
+    console.log('Tokens activos en memoria:', getActiveTokensCount());
+    
+    const decoded = verifyResetToken(cleanToken);
+    console.log('Token decodificado:', decoded);
     if (!decoded) {
       res.status(400).json({
         success: false,
@@ -401,16 +376,12 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     }
 
     // Actualizar contraseña
-    console.log('🔑 Actualizando contraseña para usuario:', user.id);
     const hashedPassword = await hashPassword(newPassword);
-    console.log('🔐 Contraseña hasheada correctamente');
     
     const updatedUser = await updateUserPassword(user.id, hashedPassword);
-    console.log('✅ Usuario actualizado en MongoDB:', updatedUser ? 'Sí' : 'No');
     
     // Invalidar token usado
-    invalidateResetToken(token);
-    console.log('🗑️ Token invalidado correctamente');
+    invalidateResetToken(cleanToken);
     
     res.json({
       success: true,
@@ -441,21 +412,16 @@ export const refreshTokenEndpoint = async (req: Request, res: Response): Promise
       return;
     }
     
-    console.log('🔄 Intentando refrescar token...');
-    
     // Intentar refrescar el token
     const newToken = refreshToken(token);
     
     if (!newToken) {
-      console.log('❌ Token inválido o expirado para refresh');
       res.status(401).json({
         success: false,
         error: { message: 'Token inválido o expirado' }
       });
       return;
     }
-    
-    console.log('✅ Token refrescado exitosamente');
     
     res.json({
       success: true,
