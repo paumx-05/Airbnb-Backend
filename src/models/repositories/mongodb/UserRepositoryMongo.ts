@@ -103,15 +103,10 @@ export class UserRepositoryMongo implements IUserRepository {
 
   async updateUserPassword(id: string, newPassword: string): Promise<User> {
     try {
-      // Validate and hash new password
-      if (!this.isPasswordValid(newPassword)) {
-        throw new Error('La contraseña debe tener al menos 8 caracteres');
-      }
-
-      const hashedPassword = await this.hashPassword(newPassword);
+      // La contraseña ya viene hasheada desde el controlador
       const user = await UserModel.findByIdAndUpdate(
         id,
-        { password: hashedPassword },
+        { password: newPassword },
         { new: true }
       );
 

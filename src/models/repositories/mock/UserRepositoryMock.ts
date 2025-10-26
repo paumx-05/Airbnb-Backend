@@ -131,12 +131,8 @@ export class UserRepositoryMock implements IUserRepository {
         throw new Error('Usuario no encontrado');
       }
 
-      // Validate and hash new password
-      if (!this.isPasswordValid(newPassword)) {
-        throw new Error('La contraseña debe tener al menos 8 caracteres');
-      }
-
-      this.userDB.users[userIndex].password = await this.hashPassword(newPassword);
+      // La contraseña ya viene hasheada desde el controlador
+      this.userDB.users[userIndex].password = newPassword;
 
       return this.userDB.users[userIndex];
     } catch (error) {

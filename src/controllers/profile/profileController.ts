@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
-import { findUserById, updateUser, updateUserPassword } from '../../models';
-import { hashPassword } from '../../utils/jwtMock';
+import { findUserById, updateUser, updateUserPassword, hashPassword } from '../../models';
 import { validateName, validatePassword } from '../../utils/validation';
 import bcrypt from 'bcryptjs';
 import { UserSettingsModel } from '../../models/schemas/UserSettingsSchema';
@@ -193,7 +192,7 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
     }
 
     // Actualizar contraseña
-    const hashedNewPassword = hashPassword(newPassword);
+    const hashedNewPassword = await hashPassword(newPassword);
     await updateUserPassword(userId, hashedNewPassword);
 
     res.json({

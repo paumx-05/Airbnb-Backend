@@ -1,0 +1,1 @@
+http://localhost:3000/api/auth/reset-password?token=reset_eyJ1c2VySWQiOiI2OGZlMDA3NzkwZWY2MTcxYTA4MDRiZmYiLCJlbWFpbCI6InBhdTFAZ21haWwuY29tIiwidHlwZSI6InBhc3N3b3JkLXJlc2V0IiwiaWF0IjoxNzYxNDc3NzEzLCJleHAiOjE3NjE1NjQxMTN9

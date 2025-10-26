@@ -257,6 +257,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 // POST /api/auth/forgot-password
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('🔄 Iniciando proceso de recuperación de contraseña...');
     const { email } = req.body;
     
     // Validar email
@@ -282,14 +283,21 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       // Generar token de reset
       const resetToken = generateResetToken(user.id, user.email);
       
+      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/api/auth/reset-password?token=${resetToken}`;
+      
+      // Log solo del token con el link
+      console.log(resetLink);
+      
+      // También escribir en archivo para debugging
+      const fs = require('fs');
+      fs.writeFileSync('reset-token.txt', resetLink);
+      console.log('📄 Token guardado en reset-token.txt');
+      
       // Enviar email usando Resend
       try {
         console.log('📧 Iniciando envío de email...');
         console.log('🔑 API Key configurada:', process.env.RESEND_API_KEY ? 'Sí' : 'No');
         const resend = new Resend(process.env.RESEND_API_KEY || 're_xxxxxxxxx');
-        
-        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-        console.log('🔗 Reset link:', resetLink);
         const emailResult = await resend.emails.send({
           from: 'Airbnb <onboarding@resend.dev>',
           to: ['delivered@resend.dev'], // Enviar al email del usuario que solicitó el reset
@@ -393,11 +401,16 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     }
 
     // Actualizar contraseña
+    console.log('🔑 Actualizando contraseña para usuario:', user.id);
     const hashedPassword = await hashPassword(newPassword);
-    await updateUserPassword(user.id, hashedPassword);
+    console.log('🔐 Contraseña hasheada correctamente');
+    
+    const updatedUser = await updateUserPassword(user.id, hashedPassword);
+    console.log('✅ Usuario actualizado en MongoDB:', updatedUser ? 'Sí' : 'No');
     
     // Invalidar token usado
     invalidateResetToken(token);
+    console.log('🗑️ Token invalidado correctamente');
     
     res.json({
       success: true,
